@@ -5,7 +5,7 @@ const config = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 300 },
+            gravity: { y: 0 },
             debug: false
         }
     },
@@ -22,210 +22,271 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-let player, stars, bombs, platforms, cursors, score = 0, scoreText;
-let portraitOverlay;
-let leftButton, rightButton, jumpButton;
-let leftText, rightText, jumpText;
-let isMobile = false;
+let player, enemies, stars, stopLine;
+let castleHealth = 100;
+let playerXP = 0;
+let playerLevel = 1;
+let xpMax = 100;
+let baseAttack = 50;
+let baseProjectileSpeed = 420;
+let projectilesCount = 1;
+let statsText;
+let healthBg, healthBar, healthText;
+let xpBg, xpBar, xpText;
+let spawnTimer, shootTimer;
+let gameOverText;
 
 function preload() {
-    this.load.image('sky', 'assets/sky.png');
-    this.load.image('ground', 'assets/platform.png');
-    this.load.image('star', 'assets/star.png');
-    this.load.image('bomb', 'assets/bomb.png');
+    this.load.image('castle', 'assets/castle-bg.png');
     this.load.spritesheet('dude', 'assets/dude.png', { frameWidth: 32, frameHeight: 48 });
+    this.load.image('enemy', 'assets/bomb.png');
 }
 
 function create() {
-    // Reliable mobile detection
-    isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const bg = this.add.image(400, 300, 'castle');
+    bg.setDisplaySize(800, 600);
 
-    // Auto fullscreen
-    this.scale.startFullscreen();
+    this.add.text(500, 30, 'Castle Defense RPG', {
+        fontSize: '32px',
+        fill: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 6
+    }).setOrigin(0.5);
 
-    this.add.image(400, 300, 'sky');
-
-    platforms = this.physics.add.staticGroup();
-    platforms.create(400, 568, 'ground').setScale(2).refreshBody();
-    platforms.create(600, 400, 'ground');
-    platforms.create(50, 250, 'ground');
-    platforms.create(750, 220, 'ground');
-
-    player = this.physics.add.sprite(100, 450, 'dude');
-    player.setBounce(0.2);
-    player.setCollideWorldBounds(true);
+    player = this.physics.add.sprite(110, 310, 'dude');
+    player.setScale(2);
+    player.body.setSize(24, 40);
+    player.body.setOffset(4, 4);
+    player.body.immovable = true;
 
     this.anims.create({
-        key: 'left',
-        frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 3 }),
-        frameRate: 10,
-        repeat: -1
-    });
-    this.anims.create({
-        key: 'turn',
-        frames: [{ key: 'dude', frame: 4 }],
+        key: 'idle_right',
+        frames: [{ key: 'dude', frame: 5 }],
         frameRate: 20
     });
-    this.anims.create({
-        key: 'right',
-        frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
-        frameRate: 10,
-        repeat: -1
-    });
+    player.anims.play('idle_right');
 
-    this.physics.add.collider(player, platforms);
+    enemies = this.physics.add.group();
+    stars = this.physics.add.group();
 
-    stars = this.physics.add.group({
-        key: 'star',
-        repeat: 11,
-        setXY: { x: 12, y: 0, stepX: 70 }
-    });
-    stars.children.iterate(child => child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8)));
-    this.physics.add.collider(stars, platforms);
-    this.physics.add.overlap(player, stars, collectStar, null, this);
+    // Wider invisible stop line at ~1/3 from left (x = 267) for reliable collision
+    stopLine = this.add.rectangle(267, 300, 40, 600, 0xff0000, 0);
+    this.physics.add.existing(stopLine);
+    stopLine.body.immovable = true;
+    stopLine.body.allowGravity = false;
 
-    scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
+    // Collider: enemies hit the stop line and stop
+    this.physics.add.collider(enemies, stopLine, onEnemyReachStopLine, null, this);
 
-    bombs = this.physics.add.group();
-    this.physics.add.collider(bombs, platforms);
-    this.physics.add.collider(player, bombs, hitBomb, null, this);
+    this.physics.add.overlap(stars, enemies, hitEnemy, null, this);
 
-    cursors = this.input.keyboard.createCursorKeys();
+    // UI - Health & XP bars
+    healthBg = this.add.rectangle(400, 560, 280, 25, 0x444444)
+        .setOrigin(0.5)
+        .setStrokeStyle(2, 0x000000);
 
-    // === MOBILE TOUCH CONTROLS ===
-    if (isMobile) {
-        const buttonRadius = 50;
-        const padding = 30;
+    healthBar = this.add.graphics();
+    healthBar.fillStyle(0xff4444, 1);
+    healthBar.fillRect(0, 0, 280, 25);
+    healthBar.setPosition(400 - 140, 560 - 12.5);
 
-        // LEFT & RIGHT on the LEFT side
-        leftButton = this.add.circle(
-            padding + buttonRadius,
-            this.scale.height - (padding + buttonRadius),
-            buttonRadius, 0x000000, 0.5
-        ).setInteractive().setDepth(10);
-
-        rightButton = this.add.circle(
-            padding + buttonRadius * 3 + padding,
-            this.scale.height - (padding + buttonRadius),
-            buttonRadius, 0x000000, 0.5
-        ).setInteractive().setDepth(10);
-
-        leftText = this.add.text(leftButton.x, leftButton.y, '←', {
-            fontSize: '56px', color: '#ffffff'
-        }).setOrigin(0.5).setDepth(11);
-
-        rightText = this.add.text(rightButton.x, rightButton.y, '→', {
-            fontSize: '56px', color: '#ffffff'
-        }).setOrigin(0.5).setDepth(11);
-
-        // JUMP on the RIGHT side
-        jumpButton = this.add.circle(
-            this.scale.width - (padding + buttonRadius),
-            this.scale.height - (padding + buttonRadius),
-            buttonRadius * 1.3, 0x000000, 0.5  // slightly larger
-        ).setInteractive().setDepth(10);
-
-        jumpText = this.add.text(jumpButton.x, jumpButton.y, 'JUMP', {
-            fontSize: '36px', color: '#ffffff', fontFamily: 'Arial Black'
-        }).setOrigin(0.5).setDepth(11);
-
-        // Input handling
-        leftButton.on('pointerdown', () => cursors.left.isDown = true);
-        leftButton.on('pointerup', () => cursors.left.isDown = false);
-        leftButton.on('pointerout', () => cursors.left.isDown = false);
-
-        rightButton.on('pointerdown', () => cursors.right.isDown = true);
-        rightButton.on('pointerup', () => cursors.right.isDown = false);
-        rightButton.on('pointerout', () => cursors.right.isDown = false);
-
-        jumpButton.on('pointerdown', () => cursors.up.isDown = true);
-        jumpButton.on('pointerup', () => cursors.up.isDown = false);
-        jumpButton.on('pointerout', () => cursors.up.isDown = false);
-    }
-
-    // Portrait overlay
-    portraitOverlay = this.add.container(400, 300).setVisible(false);
-    const bg = this.add.rectangle(0, 0, 500, 180, 0x000000, 0.75);
-    const msg = this.add.text(0, 0, 'Please rotate to landscape mode', {
-        fontSize: '36px',
-        fill: '#ffffff',
-        align: 'center'
+    healthText = this.add.text(400, 538, 'Castle Health: 100', {
+        fontSize: '18px',
+        fill: '#eeeeee',
+        stroke: '#000000',
+        strokeThickness: 3
     }).setOrigin(0.5);
-    portraitOverlay.add([bg, msg]);
 
-    // Resize & orientation handling
-    this.scale.on('resize', resizeControls, this);
-    this.scale.on('orientationchange', handleOrientation, this);
+    xpBg = this.add.rectangle(400, 595, 280, 25, 0x444444)
+        .setOrigin(0.5)
+        .setStrokeStyle(2, 0x000000);
 
-    this.scale.lockOrientation('landscape');
-    handleOrientation.call(this);
-}
+    xpBar = this.add.graphics();
+    xpBar.fillStyle(0x44ff44, 1);
+    xpBar.fillRect(0, 0, 280, 25);
+    xpBar.setPosition(400 - 140, 595 - 12.5);
 
-function resizeControls() {
-    if (!isMobile) return;
+    xpText = this.add.text(400, 573, 'Level 1 - XP: 0 / 100', {
+        fontSize: '18px',
+        fill: '#eeeeee',
+        stroke: '#000000',
+        strokeThickness: 3
+    }).setOrigin(0.5);
 
-    const buttonRadius = 50;
-    const padding = 30;
+    // Stats overlay
+    statsText = this.add.text(20, 20, '', {
+        fontSize: '18px',
+        fill: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: { left: 12, right: 12, top: 10, bottom: 10 }
+    });
 
-    // Reposition left/right
-    leftButton?.setPosition(padding + buttonRadius, this.scale.height - (padding + buttonRadius));
-    rightButton?.setPosition(padding + buttonRadius * 3 + padding, this.scale.height - (padding + buttonRadius));
-    leftText?.setPosition(leftButton.x, leftButton.y);
-    rightText?.setPosition(rightButton.x, rightButton.y);
+    updateStatsDisplay.call(this);
+    updateBars.call(this);
 
-    // Reposition jump
-    jumpButton?.setPosition(this.scale.width - (padding + buttonRadius), this.scale.height - (padding + buttonRadius));
-    jumpText?.setPosition(jumpButton.x, jumpButton.y);
+    spawnTimer = this.time.addEvent({
+        delay: 1200,
+        callback: spawnEnemy,
+        callbackScope: this,
+        loop: true
+    });
 
-    // Center overlay
-    portraitOverlay.setPosition(this.scale.width / 2, this.scale.height / 2);
-}
-
-function handleOrientation() {
-    if (this.scale.orientation === Phaser.Scale.PORTRAIT) {
-        this.physics.pause();
-        portraitOverlay.setVisible(true);
-    } else {
-        this.physics.resume();
-        portraitOverlay.setVisible(false);
-    }
-    resizeControls.call(this);
+    shootTimer = this.time.addEvent({
+        delay: 1000,
+        callback: autoShootAtNearest,
+        callbackScope: this,
+        loop: true
+    });
 }
 
 function update() {
-    if (cursors.left.isDown) {
-        player.setVelocityX(-160);
-        player.anims.play('left', true);
-    } else if (cursors.right.isDown) {
-        player.setVelocityX(160);
-        player.anims.play('right', true);
-    } else {
-        player.setVelocityX(0);
-        player.anims.play('turn');
+    enemies.children.iterate(enemy => {
+        if (enemy && enemy.x < -50) enemy.destroy();
+    });
+
+    stars.children.iterate(star => {
+        if (star && (star.x > 900 || star.y < -50 || star.y > 650)) star.destroy();
+    });
+}
+
+function spawnEnemy() {
+    if (enemies.countActive(true) >= 10) return;
+
+    const yPos = Phaser.Math.Between(60, 540);
+
+    const enemy = enemies.create(850, yPos, 'enemy');
+    enemy.setScale(1.2);
+    enemy.setVelocityX(-70);
+    enemy.setVelocityY(0);
+    enemy.body.setBounce(0);
+    enemy.setTint(0xff4444);
+    enemy.health = 100;
+    enemy.maxHealth = 100;
+    enemy.isAttacking = false;
+    enemy.damageTimer = null;
+}
+
+function autoShootAtNearest() {
+    if (!player.active) return;
+
+    let nearest = null;
+    let minDistance = Infinity;
+
+    enemies.children.iterate(enemy => {
+        if (!enemy.active || enemy.x <= player.x + 20) return;
+        const distance = Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y);
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearest = enemy;
+        }
+    });
+
+    if (!nearest) return;
+
+    const star = stars.create(player.x + 50, player.y, 'enemy');
+    star.setTint(0xffff00);
+    star.setScale(1.1);
+    star.body.setSize(32, 32); // larger hitbox for reliable hits
+
+    const speed = baseProjectileSpeed;
+    const leadFactor = 1.15;
+    const timeToImpact = (minDistance / speed) * leadFactor;
+    const predictedX = nearest.x + (nearest.body.velocity.x * timeToImpact);
+    const predictedY = nearest.y + (nearest.body.velocity.y * timeToImpact);
+
+    const angle = Phaser.Math.Angle.Between(player.x, player.y, predictedX, predictedY);
+    star.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+}
+
+function hitEnemy(star, enemy) {
+    star.destroy();
+    enemy.health -= baseAttack;
+
+    if (enemy.health < enemy.maxHealth) {
+        enemy.setTint(0xffaa00);
     }
 
-    if (cursors.up.isDown && player.body.touching.down) {
-        player.setVelocityY(-330);
+    if (enemy.health <= 0) {
+        if (enemy.damageTimer) enemy.damageTimer.remove();
+        enemy.destroy();
+        playerXP += 50;
+        if (playerXP >= xpMax) {
+            levelUp.call(this);
+        }
+        updateBars.call(this);
+        updateStatsDisplay.call(this);
     }
 }
 
-function collectStar(player, star) {
-    star.disableBody(true, true);
-    score += 10;
-    scoreText.setText('Score: ' + score);
+function onEnemyReachStopLine(objA, objB) {
+    // Identify the enemy (the one with health property)
+    const enemy = objA.health !== undefined ? objA : objB;
 
-    if (stars.countActive(true) === 0) {
-        stars.children.iterate(child => child.enableBody(true, child.x, 0, true, true));
-        let x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
-        let bomb = bombs.create(x, 16, 'bomb');
-        bomb.setBounce(1);
-        bomb.setCollideWorldBounds(true);
-        bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
-    }
+    if (!enemy || !enemy.active || enemy.isAttacking) return;
+
+    enemy.setVelocityX(0);
+    enemy.setVelocityY(0);
+    enemy.setTint(0x880000);
+    enemy.isAttacking = true;
+
+    enemy.damageTimer = this.time.addEvent({
+        delay: 1000,
+        callback: () => {
+            if (!enemy.active || castleHealth <= 0) {
+                if (enemy.damageTimer) enemy.damageTimer.remove();
+                return;
+            }
+            castleHealth -= 10;
+            updateBars.call(this);
+
+            if (castleHealth <= 0) {
+                gameOverText = this.add.text(400, 300, `GAME OVER\nCastle Destroyed!\nFinal Level: ${playerLevel}`, {
+                    fontSize: '48px',
+                    fill: '#ff0000',
+                    stroke: '#000000',
+                    strokeThickness: 8,
+                    align: 'center'
+                }).setOrigin(0.5);
+
+                spawnTimer.remove();
+                shootTimer.remove();
+                this.physics.pause();
+            }
+        },
+        loop: true
+    });
 }
 
-function hitBomb(player, bomb) {
-    this.physics.pause();
-    player.setTint(0xff0000);
-    player.anims.play('turn');
+function levelUp() {
+    playerLevel++;
+    playerXP = 0;
+    xpMax += 100;
+    baseAttack *= 1.1;
+    baseProjectileSpeed *= 1.1;
+    updateStatsDisplay.call(this);
+}
+
+function updateBars() {
+    const healthPercent = Math.max(0, castleHealth / 100);
+    healthBar.clear();
+    healthBar.fillStyle(0xff4444, 1);
+    healthBar.fillRect(0, 0, 280 * healthPercent, 25);
+    healthText.setText(`Castle Health: ${castleHealth}`);
+
+    const xpPercent = Math.min(1, playerXP / xpMax);
+    xpBar.clear();
+    xpBar.fillStyle(0x44ff44, 1);
+    xpBar.fillRect(0, 0, 280 * xpPercent, 25);
+    xpText.setText(`Level ${playerLevel} - XP: ${playerXP} / ${xpMax}`);
+}
+
+function updateStatsDisplay() {
+    statsText.setText(
+        `Level: ${playerLevel}\n` +
+        `Attack: ${Math.round(baseAttack)}\n` +
+        `Attack Speed: ${Math.round(baseProjectileSpeed)}\n` +
+        `Projectiles: ${projectilesCount}`
+    );
 }
