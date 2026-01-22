@@ -2,140 +2,287 @@
 // STATS & CONFIGURATION
 // =============================================
 
-// ── CONSTANTS ───────────────────────────────────────────────────
-const MAX_LEVEL = 100;
-const XP_GROWTH = 1.5;
-const XP_BASE_REQ = 100;
-const XP_CUMUL_FACTOR = 200;
-
 // ── CHARACTER DEFINITIONS ───────────────────────────────────────
 const CHARACTERS = [
-    { id: 0, name: 'Mona',   spriteKey: 'dude', spriteScale: 3.0 },
-    { id: 1, name: 'Luna',   spriteKey: 'dude', spriteScale: 3.0 },
-    { id: 2, name: 'Riven',  spriteKey: 'dude', spriteScale: 3.0 },
-    { id: 3, name: 'Zephyr', spriteKey: 'dude', spriteScale: 3.0 }
+    {
+        id: 0,
+        name: 'Mona',
+        spriteKey: 'dude',
+        spriteScale: 3.0,
+        portraitKey: 'monap',
+        baseStats: {
+            attack: 50,
+            projectileTravelSpeed: 220,
+            fireRate: 0.40,
+            projectilesCount: 1,
+            pierce: 1
+        },
+        projectileConfig: {
+            key: 'fb001',
+            animKey: 'fireball_anim',
+            scale: 2.6,
+            bodySize: 104
+        }
+    },
+    {
+        id: 1,
+        name: 'Luna',
+        spriteKey: 'dude',
+        spriteScale: 3.0,
+        portraitKey: 'monap',
+        baseStats: {
+            attack: 50,
+            projectileTravelSpeed: 220,
+            fireRate: 0.40,
+            projectilesCount: 1,
+            pierce: 0
+        },
+        projectileConfig: {
+            key: 'shuriken',
+            animKey: 'shuriken_anim',
+            scale: 2.6,
+            bodySize: 44
+        }
+    },
+    {
+        id: 2,
+        name: 'Riven',
+        spriteKey: 'dude',
+        spriteScale: 3.0,
+        portraitKey: 'monap',
+        baseStats: {
+            attack: 50,
+            projectileTravelSpeed: 220,
+            fireRate: 0.40,
+            projectilesCount: 1,
+            pierce: 0
+        },
+        projectileConfig: {
+            key: 'fb001',
+            animKey: 'fireball_anim',
+            scale: 2.6,
+            bodySize: 104
+        }
+    },
+    {
+        id: 3,
+        name: 'Zephyr',
+        spriteKey: 'dude',
+        spriteScale: 3.0,
+        portraitKey: 'monap',
+        baseStats: {
+            attack: 50,
+            projectileTravelSpeed: 220,
+            fireRate: 0.40,
+            projectilesCount: 1,
+            pierce: 0
+        },
+        projectileConfig: {
+            key: 'fb001',
+            animKey: 'fireball_anim',
+            scale: 2.6,
+            bodySize: 104
+        }
+    }
 ];
 
 let currentCharacterIndex = 0;
-let selectedLevelIndex = 0;
-let levelSpeedMultiplier = 1;
 
-// ── CASTLE STATS (reset every run) ──────────────────────────────
-let castleStats = {
-    health: 100,
-    maxHealth: 100,
-    timeLeft: 60,
-    gameState: 'playing'
-};
+// ── ENEMY BASE STATS ────────────────────────────────────────────
+const ENEMY_BASE = { health: 100, speed: 52.5, tint: 0xffffff, scale: 2.4 };
 
-// ── ENEMY STATS ─────────────────────────────────────────────────
-const ENEMY_BASE = {
-    health: 100,
-    speed: 52.5,
-    damage: 10,
-    tint: 0xff4444,
-    scale: 2.0
-};
+// ── ENEMY SCALING ───────────────────────────────────────────────
+const ENEMY_SCALE_FACTOR = { health: 1.10, speed: 1.05 };
 
-let enemyStats = { multiplier: 1 };
+// ── GENERAL GAME CONFIG ─────────────────────────────────────────
+const MAX_LEVEL = 100;
+const XP_GROWTH = 1.5;
+const XP_BASE = 200;
+let spawnDelay = 100;
+const MAX_ENEMIES_ON_SCREEN = 100;
+const MAX_CROWD_AT_BARRIER = 10;
+
+// ── BARRIER ZONE CONFIG ─────────────────────────────────────────
+const BARRIER_ZONE_X = 520;
+const BARRIER_ZONE_WIDTH = 120;
+const BARRIER_ZONE_HEIGHT = 720;
+const BARRIER_REFERENCE_X = 500;  // Used for prioritizing closest-to-barrier enemies
 
 // ── GAME VARIABLES ──────────────────────────────────────────────
-let player, enemies, stars, stopLine;
-let statsText, healthBg, healthBar, healthText, timerText;
-let spawnTimer, shootTimer, gameTimer, enemyLevelTimer, xpGrowthTimer;
-let xpMultiplier = 1;
-let selectedPortraitIndex = 0;
+let player, enemies, fireballs, stopLine, barrierZone;
+let statsOverlay, statsCloseButton, statsGridContainer;
+let topLeftStatsText, xpBarBackground, xpBarFill;
+let spawnTimer, shootTimer;
 let playerStats = {};
+let statsButton;
+let selectionOverlay;
 
 // =============================================
-// HELPER FUNCTIONS
+// GLOBAL HELPER FUNCTIONS
 // =============================================
 
-function getCharacterSaveKey() {
-    return 'characterStats_' + currentCharacterIndex;
+function autoShootAtNearest() {
+    if (!player || !player.active) return;
+
+    const targets = [];
+    enemies.children.iterate(e => {
+        if (e.active) targets.push(e);
+    });
+
+    if (targets.length === 0) return;
+
+    // Sort by distance to the barrier (smallest x = closest to barrier)
+    const priority = targets.sort((a, b) => {
+        return a.x - b.x;  // lower x = closer to left/barrier → higher priority
+    });
+
+    const count = Math.min(playerStats.projectilesCount, priority.length);
+    for (let i = 0; i < count; i++) {
+        shootAtTarget(priority[i]);
+    }
 }
 
-function getBaseStats(index) {
-    const bases = [
-        { baseAttack: 25, projectileTravelSpeed: 201.6, fireRate: 0.5, projectilesCount: 1 },
-        { baseAttack: 22, projectileTravelSpeed: 220,   fireRate: 0.6, projectilesCount: 1 },
-        { baseAttack: 30, projectileTravelSpeed: 180,   fireRate: 0.4, projectilesCount: 2 },
-        { baseAttack: 28, projectileTravelSpeed: 210,   fireRate: 0.55, projectilesCount: 1 }
-    ];
-    return bases[index] || bases[0];
+function shootAtTarget(target) {
+    if (!target || !target.active) return;
+    const spawnX = player.x;
+    const spawnY = player.y - (player.displayHeight / 2) * 0.5;
+
+    const config = CHARACTERS[currentCharacterIndex].projectileConfig;
+    const projectile = fireballs.create(spawnX, spawnY, config.key);
+    projectile.play(config.animKey);
+    projectile.setScale(config.scale);
+    projectile.setOrigin(0.5, 0.5);
+    projectile.pierceHits = 0;
+    projectile.hitEnemies = new Set();
+
+    const bodySize = config.bodySize;
+    projectile.body.setSize(bodySize, bodySize);
+    projectile.body.setOffset((projectile.width - bodySize) / 2, (projectile.height - bodySize) / 2);
+
+    const dx = target.x - spawnX;
+    const dy = target.y - spawnY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 1) { projectile.setVelocity(0, 0); return; }
+
+    const speed = playerStats.projectileTravelSpeed;
+    const angle = Phaser.Math.Angle.Between(spawnX, spawnY, target.x, target.y);
+    projectile.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    projectile.rotation = angle;
 }
+
+// =============================================
+// XP & LEVEL & STATS HELPERS
+// =============================================
 
 function computeLevelFromTotalXP(totalXP) {
-    if (totalXP <= 0) return 1;
-    const arg = (totalXP / XP_CUMUL_FACTOR) + 1;
-    const logVal = Math.log(arg) / Math.log(XP_GROWTH);
-    return Math.min(Math.floor(logVal) + 1, MAX_LEVEL);
+    if (totalXP < XP_BASE) return 1;
+    let level = 1;
+    let cumulative = 0;
+    while (true) {
+        const nextThreshold = cumulative + Math.round(XP_BASE * Math.pow(XP_GROWTH, level - 1));
+        if (totalXP < nextThreshold) return level;
+        cumulative = nextThreshold;
+        level++;
+        if (level >= MAX_LEVEL) return MAX_LEVEL;
+    }
+}
+
+function getXPToNextLevel(level) {
+    return Math.round(XP_BASE * Math.pow(XP_GROWTH, level - 1));
+}
+
+function getTotalXPForLevel(level) {
+    if (level <= 1) return 0;
+    let total = 0;
+    for (let i = 1; i < level; i++) {
+        total += Math.round(XP_BASE * Math.pow(XP_GROWTH, i - 1));
+    }
+    return total;
 }
 
 function computeLevelAndStats(scene) {
     const totalXP = playerStats.totalXP || 0;
-    let level = computeLevelFromTotalXP(totalXP);
-
-    const powToLevelM1 = Math.pow(XP_GROWTH, level - 1);
-    const cumToLevel = Math.round(XP_CUMUL_FACTOR * (powToLevelM1 - 1));
-
-    let xp, xpMax;
-    if (level === MAX_LEVEL) {
-        xp = 0;
-        xpMax = 1;
-    } else {
-        xpMax = Math.round(XP_BASE_REQ * powToLevelM1);
-        xp = totalXP - cumToLevel;
-    }
-
+    const level = computeLevelFromTotalXP(totalXP);
+    const xpRequiredForThisLevel = getTotalXPForLevel(level);
+    const currentXP = totalXP - xpRequiredForThisLevel;
+    const nextLevelXP = getXPToNextLevel(level);
     playerStats.level = level;
-    playerStats.xp = Math.max(0, xp);
-    playerStats.xpMax = xpMax;
-
-    const bases = getBaseStats(currentCharacterIndex);
-    playerStats.baseAttack           = bases.baseAttack           * Math.pow(1.1,  level - 1);
-    playerStats.projectileTravelSpeed = bases.projectileTravelSpeed * Math.pow(1.05, level - 1);
-    playerStats.fireRate             = bases.fireRate             * Math.pow(1.1,  level - 1);
-    playerStats.projectilesCount     = bases.projectilesCount + Math.floor(level / 5);
-
-    updateStatsDisplay();
-    if (shootTimer) shootTimer.delay = 1000 / playerStats.fireRate;
-    savePlayerStats(scene);
+    const basePierce = CHARACTERS[currentCharacterIndex].baseStats.pierce || 0;
+    playerStats.pierce = basePierce + Math.floor(level / 5);
+    playerStats.currentXP = Math.max(0, currentXP);
+    playerStats.nextLevelXP = nextLevelXP;
+    const bases = CHARACTERS[currentCharacterIndex].baseStats;
+    playerStats.attack = bases.attack * Math.pow(1.1, level - 1);
+    playerStats.projectileTravelSpeed = bases.projectileTravelSpeed;
+    playerStats.fireRate = bases.fireRate * Math.pow(1.1, level - 1);
+    playerStats.projectilesCount = bases.projectilesCount + Math.floor(level / 5);
+    updateTopLeftStats();
+    updateXpBar();
+    updateStatsGrid();
 }
 
-function loadPlayerStats(scene) {
-    const key = getCharacterSaveKey();
-    const savedStr = localStorage.getItem(key);
-    let totalXP = 0;
-    if (savedStr) {
-        try {
-            const saved = JSON.parse(savedStr);
-            if (typeof saved.totalXP === 'number') totalXP = saved.totalXP;
-        } catch (e) {}
+function updateTopLeftStats() {
+    if (!topLeftStatsText) return;
+    const charName = CHARACTERS[currentCharacterIndex].name;
+    topLeftStatsText.setText(`${charName}\nLevel: ${playerStats.level}`);
+}
+
+function updateXpBar() {
+    if (!xpBarBackground || !xpBarFill) return;
+    const progress = playerStats.nextLevelXP > 0
+        ? Math.min(playerStats.currentXP / playerStats.nextLevelXP, 1)
+        : 0;
+    const barWidth = 220;
+    xpBarFill.setScale(progress, 1);
+    xpBarFill.x = xpBarBackground.x - (barWidth / 2) + (barWidth * progress / 2);
+}
+
+function updateStatsGrid() {
+    if (!statsGridContainer) return;
+    statsGridContainer.removeAll(true);
+    const charName = CHARACTERS[currentCharacterIndex].name;
+    const titleText = statsGridContainer.scene.add.text(0, -220, `${charName} Stats`, {
+        fontSize: '40px', fontStyle: 'bold', fill: '#aaffdd', stroke: '#000000', strokeThickness: 10
+    }).setOrigin(0.5);
+    statsGridContainer.add(titleText);
+
+    const statsPairs = [
+        { label: 'Attack', value: Math.round(playerStats.attack) },
+        { label: 'Atk Speed', value: playerStats.fireRate.toFixed(2) },
+        { label: 'Projectiles', value: playerStats.projectilesCount },
+        { label: 'Proj. Speed', value: Math.round(playerStats.projectileTravelSpeed) },
+        { label: 'Pierce', value: playerStats.pierce },
+        { label: 'Level', value: playerStats.level },
+        { label: 'XP', value: `${Math.floor(playerStats.currentXP || 0)} / ${playerStats.nextLevelXP || XP_BASE}` }
+    ];
+
+    for (let i = 0; i < statsPairs.length; i += 2) {
+        const y = -160 + (Math.floor(i / 2)) * 60;
+        if (statsPairs[i]) {
+            const stat = statsPairs[i];
+            const labelLeft = statsGridContainer.scene.add.text(-310, y, stat.label + ':', {
+                fontSize: '26px', fill: '#aaffcc', stroke: '#000000', strokeThickness: 5
+            }).setOrigin(0, 0.5);
+            const valueLeft = statsGridContainer.scene.add.text(-50, y, stat.value.toString(), {
+                fontSize: '26px', fill: '#ffffff', stroke: '#000000', strokeThickness: 5
+            }).setOrigin(1, 0.5);
+            if (valueLeft.width > 140) valueLeft.setScale(140 / valueLeft.width, 1);
+            statsGridContainer.add(labelLeft);
+            statsGridContainer.add(valueLeft);
+        }
+        if (statsPairs[i + 1]) {
+            const stat = statsPairs[i + 1];
+            const labelRight = statsGridContainer.scene.add.text(40, y, stat.label + ':', {
+                fontSize: '26px', fill: '#aaffcc', stroke: '#000000', strokeThickness: 5
+            }).setOrigin(0, 0.5);
+            const valueRight = statsGridContainer.scene.add.text(300, y, stat.value.toString(), {
+                fontSize: '26px', fill: '#ffffff', stroke: '#000000', strokeThickness: 5
+            }).setOrigin(1, 0.5);
+            if (valueRight.width > 140) valueRight.setScale(140 / valueRight.width, 1);
+            statsGridContainer.add(labelRight);
+            statsGridContainer.add(valueRight);
+        }
     }
-    playerStats.totalXP = totalXP;
-}
-
-function savePlayerStats(scene) {
-    const key = getCharacterSaveKey();
-    localStorage.setItem(key, JSON.stringify({ totalXP: playerStats.totalXP }));
-}
-
-function resetCastleAndEnemyStats() {
-    castleStats.health    = 100;
-    castleStats.timeLeft  = 60;
-    castleStats.gameState = 'playing';
-    enemyStats.multiplier = 1;
-    xpMultiplier          = 1;
-}
-
-function updateStatsDisplay() {
-    if (!statsText || typeof statsText.setText !== 'function') return;
-    statsText.setText(
-        `Level: ${playerStats.level}   XP: ${Math.floor(playerStats.xp)}/${playerStats.xpMax}\n` +
-        `Att: ${Math.round(playerStats.baseAttack)}     AttS: ${playerStats.fireRate.toFixed(2)}\n` +
-        `Proj: ${playerStats.projectilesCount}     ProjS: ${Math.round(playerStats.projectileTravelSpeed)}`
-    );
 }
 
 // =============================================
@@ -148,18 +295,21 @@ class Preloader extends Phaser.Scene {
     preload() {
         this.load.image('castle', 'assets/castle-bg.png');
         this.load.spritesheet('dude', 'assets/dude.png', { frameWidth: 63, frameHeight: 74 });
-        this.load.image('enemy', 'assets/bomb.png');
-        this.load.image('star', 'assets/star.png');
+        this.load.spritesheet('slime', 'assets/slime.png', { frameWidth: 31, frameHeight: 24 });
+        this.load.spritesheet('shuriken', 'assets/shuriken.png', { frameWidth: 22, frameHeight: 21 });
+        this.load.image('fb001', 'assets/FB00_nyknck/FB001.png');
+        this.load.image('fb002', 'assets/FB00_nyknck/FB002.png');
+        this.load.image('fb003', 'assets/FB00_nyknck/FB003.png');
+        this.load.image('fb004', 'assets/FB00_nyknck/FB004.png');
+        this.load.image('fb005', 'assets/FB00_nyknck/FB005.png');
+        this.load.image('monap', 'assets/monap.png');
     }
 
     create() {
-        this.anims.create({
-            key: 'idle_cycle',
-            frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 7 }),
-            frameRate: 4,
-            repeat: -1,
-            yoyo: true
-        });
+        this.anims.create({ key: 'idle_cycle', frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 7 }), frameRate: 4, repeat: -1, yoyo: true });
+        this.anims.create({ key: 'fireball_anim', frames: [{key:'fb001'},{key:'fb002'},{key:'fb003'},{key:'fb004'},{key:'fb005'}], frameRate: 15, repeat: -1 });
+        this.anims.create({ key: 'slime_anim', frames: this.anims.generateFrameNumbers('slime', { start: 0, end: 4 }), frameRate: 10, repeat: -1 });
+        this.anims.create({ key: 'shuriken_anim', frames: this.anims.generateFrameNumbers('shuriken', { start: 0, end: 1 }), frameRate: 15, repeat: -1 });
         this.scene.start('Castle');
     }
 }
@@ -168,577 +318,320 @@ class Castle extends Phaser.Scene {
     constructor() { super('Castle'); }
 
     create() {
-        resetCastleAndEnemyStats();
-        loadPlayerStats(this);
+        playerStats.totalXP = 0;
+        computeLevelAndStats(this);
 
-        const bg = this.add.image(720, 360, 'castle').setOrigin(0.5);
+        this.add.image(720, 360, 'castle').setOrigin(0.5);
+        this.add.text(720, 80, 'Castle Defense', { fontSize: '48px', fill: '#ffffff', stroke: '#000000', strokeThickness: 10 }).setOrigin(0.5);
 
-        healthBg = this.add.rectangle(300, 650, 400, 40, 0x444444)
-            .setOrigin(0.5).setStrokeStyle(4, 0x000000);
+        topLeftStatsText = this.add.text(20, 20, '', { fontSize: '24px', fill: '#ffffff', stroke: '#000000', strokeThickness: 6, lineSpacing: 4 });
 
-        healthBar = this.add.graphics();
-        healthBar.fillStyle(0xff4444, 1);
-        healthBar.fillRect(0, 0, 400, 40);
-        healthBar.setPosition(100, 630);
+        const barX = 130, barY = 85, barWidth = 220, barHeight = 18;
+        xpBarBackground = this.add.rectangle(barX, barY, barWidth, barHeight, 0x000000).setStrokeStyle(2, 0xffffff).setOrigin(0.5, -0.5);
+        xpBarFill = this.add.rectangle(barX, barY, barWidth, barHeight - 4, 0xffffff).setOrigin(0.5, -0.5);
 
-        healthText = this.add.text(300, 590, `Castle Health: ${castleStats.health}`, {
-            fontSize: '28px', fill: '#eeeeee', stroke: '#000000', strokeThickness: 6
-        }).setOrigin(0.5);
-
-        timerText = this.add.text(720, 60, `Time: ${castleStats.timeLeft}`, {
-            fontSize: '48px', fill: '#ffffff', stroke: '#000000', strokeThickness: 10
-        }).setOrigin(0.5);
-
-        this.add.text(720, 680, 'Castle Defense RPG', {
-            fontSize: '40px', fill: '#ffffff', stroke: '#000000', strokeThickness: 8
-        }).setOrigin(0.5);
-
-        player = this.physics.add.sprite(280, 460, CHARACTERS[currentCharacterIndex].spriteKey);
-        player.setScale(CHARACTERS[currentCharacterIndex].spriteScale);
-        player.setOrigin(0.5, 1.0);
-        player.body.setSize(32, 64);
-        player.body.setOffset(16, 0);
-        player.body.immovable = true;
-        player.anims.play('idle_cycle');
+        updateTopLeftStats();
+        updateXpBar();
 
         enemies = this.physics.add.group();
-        stars   = this.physics.add.group();
+        fireballs = this.physics.add.group();
 
         stopLine = this.add.rectangle(500, 360, 80, 720, 0xff0000, 0);
         this.physics.add.existing(stopLine);
         stopLine.body.immovable = true;
         stopLine.body.allowGravity = false;
 
-        this.physics.add.collider(enemies, stopLine, this.onEnemyReachStopLine, null, this);
-        this.physics.add.overlap(stars, enemies, this.hitEnemy, null, this);
-
-        statsText = this.add.text(40, 40, '', {
-            fontSize: '28px', fill: '#ffffff', stroke: '#000000', strokeThickness: 6,
-            backgroundColor: 'rgba(0,0,0,0.6)',
-            padding: { left: 20, right: 20, top: 15, bottom: 15 }
-        });
-
-        this.updateHealthBar();
-
-        spawnTimer = this.time.addEvent({ delay: 5900, callback: this.spawnEnemyCastle, callbackScope: this, loop: true });
-
-        shootTimer = this.time.addEvent({ delay: 2000, callback: autoShootAtNearest, callbackScope: this, loop: true });
-
-        gameTimer = this.time.addEvent({ delay: 1000, callback: this.updateTimer, callbackScope: this, loop: true });
-
-        enemyLevelTimer = this.time.addEvent({ delay: 15000, callback: this.increaseEnemyLevel, callbackScope: this, loop: true });
-
-        xpGrowthTimer = this.time.addEvent({ delay: 30000, callback: this.increaseXPMultiplier, callbackScope: this, loop: true });
-
-        computeLevelAndStats(this);
-        this.createTrainingOverlay();
-    }
-
-    updateHealthBar() {
-        const percent = Math.max(0, castleStats.health / castleStats.maxHealth);
-        healthBar.clear();
-        healthBar.fillStyle(0xff4444, 1);
-        healthBar.fillRect(0, 0, 400 * percent, 40);
-        healthText.setText(`Castle Health: ${castleStats.health}`);
-    }
-
-    spawnEnemyCastle() {
-        const randomY = Phaser.Math.Between(150, 570);
-        const enemy = enemies.create(1300, randomY, 'enemy');
-        enemy.setScale(ENEMY_BASE.scale * 1.8 * 0.67);
-        enemy.setVelocityX(-ENEMY_BASE.speed * enemyStats.multiplier * 1.8 * levelSpeedMultiplier);
-        enemy.setVelocityY(0);
-        enemy.body.setBounce(0);
-        enemy.setTint(ENEMY_BASE.tint);
-        enemy.health = ENEMY_BASE.health * enemyStats.multiplier;
-        enemy.maxHealth = enemy.health;
-    }
-
-    increaseEnemyLevel() {
-        enemyStats.multiplier *= 1.2;
-    }
-
-    increaseXPMultiplier() {
-        xpMultiplier += 0.25;
-    }
-
-    hitEnemy(star, enemy) {
-        star.destroy();
-        enemy.health -= playerStats.baseAttack;
-
-        if (enemy.health < enemy.maxHealth) enemy.setTint(0xffaa00);
-
-        if (enemy.health <= 0) {
-            if (enemy.damageTimer) enemy.damageTimer.remove();
-            enemy.destroy();
-
-            if (playerStats.level < MAX_LEVEL) {
-                playerStats.totalXP += Math.round(50 * xpMultiplier);
-                computeLevelAndStats(this);
+        this.physics.add.collider(enemies, stopLine, (enemy) => {
+            if (enemy && enemy.body) {
+                enemy.body.setVelocityX(0);
+                enemy.body.setVelocityY(0);
             }
-        }
-    }
+        }, null, this);
 
-    onEnemyReachStopLine(objA, objB) {
-        const enemy = objA.health !== undefined ? objA : objB;
-        if (!enemy || !enemy.active || enemy.isAttacking) return;
+        this.physics.add.overlap(fireballs, enemies, this.hitEnemy, null, this);
 
-        enemy.setVelocityX(0);
-        enemy.setVelocityY(0);
-        enemy.setTint(0x880000);
-        enemy.isAttacking = true;
+        // Barrier counting zone
+        barrierZone = this.add.rectangle(BARRIER_ZONE_X, 360, BARRIER_ZONE_WIDTH, BARRIER_ZONE_HEIGHT, 0x00ff00, 0);
+        this.physics.add.existing(barrierZone);
+        barrierZone.body.allowGravity = false;
+        barrierZone.body.immovable = true;
+        barrierZone.body.moves = false;
 
-        enemy.damageTimer = this.time.addEvent({
-            delay: 1000,
-            callback: () => {
-                if (castleStats.gameState !== 'playing' || !enemy.active) {
-                    if (enemy.damageTimer) enemy.damageTimer.remove();
-                    return;
-                }
-                castleStats.health -= ENEMY_BASE.damage;
-                this.updateHealthBar();
-
-                if (castleStats.health <= 0) this.endGame('lose');
-            },
-            loop: true
-        });
-    }
-
-    updateTimer() {
-        if (castleStats.gameState !== 'playing') return;
-
-        castleStats.timeLeft--;
-        timerText.setText(`Time: ${castleStats.timeLeft}`);
-
-        if (castleStats.timeLeft <= 0) {
-            if (castleStats.health > 0) this.endGame('win');
-        }
-    }
-
-    endGame(result) {
-        castleStats.gameState = result;
-
-        spawnTimer?.remove();
-        shootTimer?.remove();
-        gameTimer?.remove();
-        enemyLevelTimer?.remove();
-        xpGrowthTimer?.remove();
-        this.physics.pause();
-
-        const message = result === 'win'
-            ? 'VICTORY!\nCastle Defended!'
-            : 'GAME OVER\nCastle Destroyed!';
-
-        this.add.text(720, 360, message, {
-            fontSize: '64px',
-            fill: result === 'win' ? '#00ff00' : '#ff0000',
-            stroke: '#000000',
-            strokeThickness: 10,
-            align: 'center'
-        }).setOrigin(0.5);
-
-        this.add.text(720, 520, 'RESTART', {
-            fontSize: '48px',
-            fill: '#ffffff',
+        // Stats button
+        statsButton = this.add.text(400, 40, 'Stats', {
+            fontSize: '32px',
+            fill: '#00ffcc',
             backgroundColor: '#444444',
-            padding: { left: 60, right: 60, top: 20, bottom: 20 }
-        })
-        .setOrigin(0.5)
-        .setInteractive()
-        .on('pointerdown', () => this.scene.restart());
+            padding: { left: 16, right: 16, top: 8, bottom: 8 }
+        }).setOrigin(1, 0)
+          .setInteractive()
+          .setVisible(false)
+          .on('pointerdown', () => this.showStatsOverlay());
+
+        // Stats overlay
+        statsOverlay = this.add.container(720, 360).setDepth(15).setVisible(false);
+
+        const overlayBg = this.add.rectangle(0, 0, 760, 520, 0x112233)
+            .setAlpha(0.88)
+            .setStrokeStyle(4, 0x88ccff);
+        statsOverlay.add(overlayBg);
+
+        statsGridContainer = this.add.container(0, 0);
+        statsOverlay.add(statsGridContainer);
+
+        statsCloseButton = this.add.text(0, 200, 'Close', {
+            fontSize: '36px',
+            fill: '#ff5555',
+            backgroundColor: '#444444',
+            padding: { left: 40, right: 40, top: 15, bottom: 15 }
+        }).setOrigin(0.5)
+          .setInteractive()
+          .on('pointerover', () => statsCloseButton.setStyle({ fill: '#ff8888' }))
+          .on('pointerout', () => statsCloseButton.setStyle({ fill: '#ff5555' }))
+          .on('pointerdown', () => {
+              statsOverlay.setVisible(false);
+          });
+        statsOverlay.add(statsCloseButton);
+
+        this.createSelectionOverlay();
+        this.selectionOverlay.setVisible(true);
+        this.pauseGameplay();
     }
 
-    createTrainingOverlay() {
-        const overlayW = 1000;
-        const overlayH = 500;
+    createSelectionOverlay() {
+        const overlayW = 1100;
+        const overlayH = 620;
         const overlayX = 720;
         const overlayY = 360;
 
-        this.trainingOverlayContainer = this.add.container(overlayX, overlayY).setDepth(10);
+        this.selectionOverlay = this.add.container(overlayX, overlayY).setDepth(10);
 
-        const overlayBg = this.add.rectangle(0, 0, overlayW, overlayH, 0x334466)
-            .setAlpha(0.92)
-            .setStrokeStyle(6, 0x88ccff);
-        this.trainingOverlayContainer.add(overlayBg);
+        const overlayBg = this.add.rectangle(0, 0, overlayW, overlayH, 0x1e2a44)
+            .setAlpha(0.93)
+            .setStrokeStyle(6, 0x6699ff);
+        this.selectionOverlay.add(overlayBg);
 
-        // ── LEFT CONTAINER (characters) ─────────────────────────────────
-        const leftContainer = this.add.container(-220, 0);
-        this.trainingOverlayContainer.add(leftContainer);
+        const previewContainer = this.add.container(0, -overlayH/2 + 140);
+        this.selectionOverlay.add(previewContainer);
 
-        const titleY = -overlayH / 2 + 30;
+        this.bigPreviewSprite = null;
 
-        const charTitle = this.add.text(0, titleY, 'CHOOSE CHARACTER', {
-            fontSize: '36px',
-            fill: '#aaffaa',
+        this.previewName = this.add.text(0, 110, CHARACTERS[0].name, {
+            fontSize: '32px',
+            fontStyle: 'bold',
+            fill: '#aaffdd',
             stroke: '#000000',
-            strokeThickness: 8
-        }).setOrigin(0.5);
-        leftContainer.add(charTitle);
+            strokeThickness: 9
+        }).setOrigin(0.5, -0.4);
+        previewContainer.add(this.previewName);
 
-        const charScale = 1.75;
-        const charSlotW = 112;
-        const charSlotH = 144;
-        const charSpacingX = 145;
-        const charSpacingY = 155;
-        const charStartX = -110;
-        const charStartY = -90;
+        const gridContainer = this.add.container(0, 100);
+        this.selectionOverlay.add(gridContainer);
+
+        const charsPerRow = 6;
+        const portraitW = 120;
+        const portraitH = 140;
+        const spacingX = 148;
+        const startX = -(charsPerRow - 1) * spacingX / 2;
 
         this.portraitFrames = [];
-        this.characterLevelTexts = [];
 
-        for (let i = 0; i < 4; i++) {
-            const px = charStartX + (i % 2) * charSpacingX;
-            const py = charStartY + Math.floor(i / 2) * charSpacingY;
+        CHARACTERS.forEach((char, i) => {
+            const px = startX + i * spacingX;
+            const py = 0;
 
             const slot = this.add.container(px, py);
+            gridContainer.add(slot);
 
-            const frame = this.add.rectangle(0, 0, charSlotW, charSlotH, 0x223355);
-            const border = this.add.rectangle(0, 0, charSlotW + 8, charSlotH + 8, 0x000000, 0)
-                .setStrokeStyle(4, (i === selectedPortraitIndex) ? 0xffff66 : 0x667799);
+            const bg = this.add.rectangle(0, 0, portraitW, portraitH, 0x334455)
+                .setStrokeStyle(3, 0x667799);
+            slot.add(bg);
 
+            const border = this.add.rectangle(0, 0, portraitW + 12, portraitH + 12, 0xffffff, 0)
+                .setStrokeStyle(5, i === currentCharacterIndex ? 0xffff55 : 0x667799);
             this.portraitFrames.push(border);
-            slot.add([frame, border]);
+            slot.add(border);
 
-            const sprite = this.add.sprite(0, -16, CHARACTERS[i].spriteKey)
-                .setScale(charScale)
-                .setFrame(0)
-                .setFlipX(false);
-            sprite.anims.play('idle_cycle');
+            const portrait = this.add.image(0, 0, char.portraitKey)
+                .setDisplaySize(portraitW - 16, portraitH - 16)
+                .setOrigin(0.5);
+            slot.add(portrait);
 
-            const nameText = this.add.text(0, 38, CHARACTERS[i].name, {
-                fontSize: '16px',
-                fill: '#ffff99',
-                stroke: '#000000',
-                strokeThickness: 4
-            }).setOrigin(0.5);
-
-            let displayLevel = 1;
-            const savedStr = localStorage.getItem('characterStats_' + i);
-            if (savedStr) {
-                try {
-                    const data = JSON.parse(savedStr);
-                    displayLevel = computeLevelFromTotalXP(data.totalXP || 0);
-                } catch (e) {}
-            }
-            const levelText = this.add.text(0, 56, `Lv ${displayLevel}`, {
-                fontSize: '14px',
-                fill: '#ccffff',
-                stroke: '#000000',
-                strokeThickness: 3
-            }).setOrigin(0.5);
-
-            this.characterLevelTexts.push(levelText);
-
-            slot.add([sprite, nameText, levelText]);
-
-            const hitArea = this.add.rectangle(0, 0, charSlotW, charSlotH, 0xffffff, 0)
+            const hitArea = this.add.rectangle(0, 0, portraitW + 20, portraitH + 20, 0xffffff, 0)
                 .setInteractive();
 
             hitArea.on('pointerdown', () => {
-                selectedPortraitIndex = i;
                 currentCharacterIndex = i;
                 this.portraitFrames.forEach((b, idx) => {
-                    b.setStrokeStyle(4, (idx === selectedPortraitIndex) ? 0xffff66 : 0x667799);
+                    b.setStrokeStyle(5, idx === i ? 0xffff55 : 0x667799);
                 });
-
-                for (let idx = 0; idx < CHARACTERS.length; idx++) {
-                    const key = 'characterStats_' + idx;
-                    let lv = 1;
-                    const saved = localStorage.getItem(key);
-                    if (saved) {
-                        try {
-                            const data = JSON.parse(saved);
-                            lv = computeLevelFromTotalXP(data.totalXP || 0);
-                        } catch {}
-                    }
-                    this.characterLevelTexts[idx].setText(`Lv ${lv}`);
-                }
+                this.updateBigPreview();
             });
 
             slot.add(hitArea);
-            leftContainer.add(slot);
-        }
-
-        // ── RIGHT CONTAINER (levels) ────────────────────────────────────
-        const rightContainer = this.add.container(250, 0);
-        this.trainingOverlayContainer.add(rightContainer);
-
-        const levelTitle = this.add.text(0, titleY, 'CHOOSE LEVEL', {
-            fontSize: '36px',
-            fill: '#aaffaa',
-            stroke: '#000000',
-            strokeThickness: 8
-        }).setOrigin(0.5);
-        rightContainer.add(levelTitle);
-
-        const levelViewX = -210;
-        const levelViewY = -overlayH / 2 + 80;
-        const levelViewW = 500;
-        const levelViewH = 300;
-
-        const topPadding = 40;
-
-        const maskGraphics = this.make.graphics({ x: 0, y: 0 });
-        const absMaskX = overlayX + rightContainer.x + levelViewX;
-        const absMaskY = overlayY + rightContainer.y + levelViewY;
-        maskGraphics.fillStyle(0xffffff, 1);
-        maskGraphics.fillRect(absMaskX, absMaskY, levelViewW, levelViewH);
-        const mask = maskGraphics.createGeometryMask();
-
-        const levelsContainer = this.add.container(levelViewX, levelViewY + topPadding);
-        levelsContainer.setMask(mask);
-        rightContainer.add(levelsContainer);
-
-        const levelSlotW = 365;
-        const levelSlotH = 50;
-        const levelSpacingY = 10;
-
-        this.levelFrames = [];
-
-        for (let i = 0; i < 10; i++) {
-            const py = i * (levelSlotH + levelSpacingY);
-
-            const slot = this.add.container(0, py);
-
-            const frame = this.add.rectangle(0, 0, levelSlotW, levelSlotH, 0x223355)
-                .setOrigin(0, 0.5);
-            const border = this.add.rectangle(0, 0, levelSlotW + 6, levelSlotH + 6, 0x000000, 0)
-                .setOrigin(0, 0.5)
-                .setStrokeStyle(3, (i === selectedLevelIndex) ? 0xffff66 : 0x667799);
-
-            this.levelFrames.push(border);
-            slot.add([frame, border]);
-
-            const img = this.add.image(30, 0, 'castle')
-                .setScale(0.06)
-                .setOrigin(0.5);
-
-            const txt = this.add.text(80, 0, `1-${i+1}`, {
-                fontSize: '24px',
-                fill: '#ffff99',
-                stroke: '#000000',
-                strokeThickness: 5
-            }).setOrigin(0, 0.5);
-
-            slot.add([img, txt]);
-
-            const hit = this.add.rectangle(0, 0, levelSlotW, levelSlotH, 0xffffff, 0)
-                .setOrigin(0, 0.5)
-                .setInteractive();
-
-            hit.on('pointerdown', ((idx) => () => {
-                selectedLevelIndex = idx;
-                this.levelFrames.forEach((b, j) => {
-                    b.setStrokeStyle(3, (j === selectedLevelIndex) ? 0xffff66 : 0x667799);
-                });
-            })(i));
-
-            slot.add(hit);
-            levelsContainer.add(slot);
-        }
-
-        // ── Scrollbar ───────────────────────────────────────────────
-        const scrollBarX = levelViewX + levelViewW + 15;
-        const scrollBarY = levelViewY;
-        const scrollBarHeight = levelViewH;
-
-        const scrollTrack = this.add.rectangle(scrollBarX, scrollBarY + scrollBarHeight / 2, 10, scrollBarHeight, 0x666666)
-            .setOrigin(0.5);
-        rightContainer.add(scrollTrack);
-
-        const totalContentH = 10 * (levelSlotH + levelSpacingY) - levelSpacingY;
-        const maxScroll = Math.max(0, totalContentH - levelViewH);
-        const thumbHeight = Math.max(30, (levelViewH / totalContentH) * scrollBarHeight || 30);
-
-        const scrollThumb = this.add.rectangle(scrollBarX, scrollBarY, 10, thumbHeight, 0xaaaaaa)
-            .setOrigin(0.5, 0)
-            .setInteractive();
-        rightContainer.add(scrollThumb);
-
-        let scrollPos = 0;
-
-        const updateThumbPosition = () => {
-            const thumbRange = scrollBarHeight - thumbHeight;
-            scrollThumb.y = scrollBarY + (scrollPos / maxScroll) * thumbRange;
-        };
-
-        updateThumbPosition();
-
-        this.input.on('wheel', (pointer, over, deltaX, deltaY) => {
-            if (!this.trainingOverlayContainer.visible) return;
-
-            const relX = pointer.x - (overlayX + rightContainer.x + levelViewX);
-            const relY = pointer.y - (overlayY + rightContainer.y + levelViewY);
-
-            if (relX >= 0 && relX <= levelViewW && relY >= 0 && relY <= levelViewH) {
-                scrollPos += deltaY * 0.5;
-                scrollPos = Phaser.Math.Clamp(scrollPos, 0, maxScroll);
-                levelsContainer.y = levelViewY + topPadding - scrollPos;
-                updateThumbPosition();
-            }
         });
 
-        scrollThumb.on('pointerdown', () => this.input.setDraggable(scrollThumb, true));
-
-        this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
-            if (gameObject !== scrollThumb) return;
-
-            const thumbRange = scrollBarHeight - thumbHeight;
-            const clampedY = Phaser.Math.Clamp(dragY, scrollBarY, scrollBarY + thumbRange);
-            scrollThumb.y = clampedY;
-
-            const progress = (clampedY - scrollBarY) / thumbRange;
-            scrollPos = maxScroll * progress;
-            levelsContainer.y = levelViewY + topPadding - scrollPos;
-        });
-
-        this.input.on('dragend', () => this.input.setDraggable(scrollThumb, false));
-
-        const startBtn = this.add.text(0, overlayH/2 - 60, 'Defend the Castle', {
-            fontSize: '40px',
+        const startBtn = this.add.text(0, overlayH/2 - 70, 'DEFEND THE CASTLE', {
+            fontSize: '42px',
+            fontStyle: 'bold',
             fill: '#ffffff',
-            backgroundColor: '#008822',
-            padding: { left: 60, right: 60, top: 20, bottom: 20 }
+            backgroundColor: '#006633',
+            padding: { left: 70, right: 70, top: 25, bottom: 25 },
+            stroke: '#000000',
+            strokeThickness: 9
         })
         .setOrigin(0.5)
         .setInteractive()
         .on('pointerover', () => startBtn.setStyle({ fill: '#ffffcc' }))
         .on('pointerout', () => startBtn.setStyle({ fill: '#ffffff' }))
         .on('pointerdown', () => {
-            loadPlayerStats(this);
-            computeLevelAndStats(this);
-            this.trainingOverlayContainer.setVisible(false);
+            this.selectionOverlay.setVisible(false);
             this.resumeGameplay();
+            statsButton.setVisible(true);
         });
+        this.selectionOverlay.add(startBtn);
 
-        this.trainingOverlayContainer.add(startBtn);
+        this.updateBigPreview = () => {
+            if (this.bigPreviewSprite) this.bigPreviewSprite.destroy();
+            const char = CHARACTERS[currentCharacterIndex];
+            this.bigPreviewSprite = this.add.sprite(0, 60, char.spriteKey)
+                .setScale(2.8)
+                .setOrigin(0.5, 0.8)
+                .play('idle_cycle');
+            previewContainer.add(this.bigPreviewSprite);
+            this.previewName.setText(char.name);
+        };
 
-        this.trainingOverlayContainer.setVisible(true);
-        this.pauseGameplay();
-
-        this.input.keyboard.on('keydown-T', () => {
-            if (this.trainingOverlayContainer.visible) {
-                loadPlayerStats(this);
-                computeLevelAndStats(this);
-                this.trainingOverlayContainer.setVisible(false);
-                this.resumeGameplay();
-            } else {
-                this.trainingOverlayContainer.setVisible(true);
-                this.pauseGameplay();
-            }
-        });
+        this.updateBigPreview();
     }
 
     pauseGameplay() {
         this.physics.pause();
         if (spawnTimer) spawnTimer.paused = true;
         if (shootTimer) shootTimer.paused = true;
-        if (gameTimer) gameTimer.paused = true;
-        if (enemyLevelTimer) enemyLevelTimer.paused = true;
-        if (xpGrowthTimer) xpGrowthTimer.paused = true;
     }
 
     resumeGameplay() {
-        const rateFactor = Math.pow(1.3, selectedLevelIndex);
-        spawnTimer.delay = 5900 / rateFactor;
-        levelSpeedMultiplier = Math.pow(1.2, selectedLevelIndex);
+        if (player) player.destroy();
 
-        this.physics.resume();
-        if (spawnTimer) spawnTimer.paused = false;
-        if (shootTimer) shootTimer.paused = false;
-        if (gameTimer) gameTimer.paused = false;
-        if (enemyLevelTimer) enemyLevelTimer.paused = false;
-        if (xpGrowthTimer) xpGrowthTimer.paused = false;
-
-        player.destroy();
-        player = this.physics.add.sprite(280, 460, CHARACTERS[currentCharacterIndex].spriteKey);
+        player = this.physics.add.sprite(280, 400, CHARACTERS[currentCharacterIndex].spriteKey);
         player.setScale(CHARACTERS[currentCharacterIndex].spriteScale);
         player.setOrigin(0.5, 1.0);
         player.body.setSize(32, 64);
         player.body.setOffset(16, 0);
         player.body.immovable = true;
         player.anims.play('idle_cycle');
-    }
-}
 
-// =============================================
-// GLOBAL HELPER FUNCTIONS
-// =============================================
+        this.physics.resume();
 
-function autoShootAtNearest() {
-    if (castleStats.gameState !== 'playing' || !player || !player.active) return;
+        spawnTimer = this.time.addEvent({
+            delay: spawnDelay,
+            callback: this.spawnEnemyCastle,
+            callbackScope: this,
+            loop: true
+        });
 
-    const targets = [];
-    enemies.children.iterate(e => {
-        if (e.active && e.x > player.x + 25) targets.push(e);
-    });
+        shootTimer = this.time.addEvent({
+            delay: 1000 / playerStats.fireRate,
+            callback: autoShootAtNearest,
+            callbackScope: this,
+            loop: true
+        });
 
-    const attacking = targets.filter(e => e.isAttacking);
-    const normal = targets.filter(e => !e.isAttacking);
+        this.time.addEvent({
+            delay: 150,
+            callback: this.manageBarrierCrowd,
+            callbackScope: this,
+            loop: true
+        });
 
-    const priority = [...attacking, ...normal].sort((a,b) => {
-        if (a.isAttacking !== b.isAttacking) return a.isAttacking ? -1 : 1;
-        return Phaser.Math.Distance.Between(player.x, player.y, a.x, a.y) -
-               Phaser.Math.Distance.Between(player.x, player.y, b.x, b.y);
-    });
-
-    const count = Math.min(playerStats.projectilesCount, priority.length);
-
-    for (let i = 0; i < count; i++) shootAtTarget(priority[i]);
-}
-
-function shootAtTarget(target) {
-    const spawnX = player.x;
-    const spawnY = player.y - (player.displayHeight / 2) * 0.5;
-
-    const star = stars.create(spawnX, spawnY, 'star');
-    star.setTint(0xffff00);
-    star.setScale(1.47 * 1.8 * 0.67);
-
-    const bodySize = 48 * 0.8;
-    star.body.setSize(bodySize, bodySize);
-    star.body.setOffset((star.displayWidth - bodySize) / 2, (star.displayHeight - bodySize) / 2);
-
-    const dx = target.x - spawnX;
-    const dy = target.y - spawnY;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-
-    if (dist < 1) {
-        star.setVelocity(0, 0);
-        return;
+        computeLevelAndStats(this);
+        statsButton.setVisible(true);
     }
 
-    const speed = playerStats.projectileTravelSpeed;
-    const tx = target.body.velocity.x;
-    const ty = target.body.velocity.y;
+    showStatsOverlay() {
+        updateStatsGrid();
+        statsOverlay.setVisible(true);
+    }
 
-    const a = tx*tx + ty*ty - speed*speed;
-    const b = 2*(dx*tx + dy*ty);
-    const c = dx*dx + dy*dy;
+    spawnEnemyCastle() {
+        let currentEnemyCount = 0;
+        enemies.children.iterate(e => { if (e.active) currentEnemyCount++; });
+        if (currentEnemyCount >= MAX_ENEMIES_ON_SCREEN) return;
 
-    let t = -1;
-    if (Math.abs(a) < 0.001) {
-        t = -c / b;
-        if (t < 0) t = dist / speed;
-    } else {
-        const disc = b*b - 4*a*c;
-        if (disc >= 0) {
-            const sd = Math.sqrt(disc);
-            t = (-b - sd) / (2*a);
-            if (t <= 0) t = (-b + sd) / (2*a);
+        const lanes = [120, 180, 240, 300, 360, 420, 480, 540, 600];
+        const chosenLane = Phaser.Utils.Array.GetRandom(lanes);
+        const randomOffset = Phaser.Math.Between(-20, 20);
+        const spawnY = chosenLane + randomOffset;
+
+        const enemy = enemies.create(1500, spawnY, 'slime');
+
+        const visualScale = ENEMY_BASE.scale * 1.8 * 0.67;
+        enemy.setScale(visualScale);
+        enemy.setTint(ENEMY_BASE.tint);
+        enemy.play('slime_anim');
+
+        const level = playerStats.level || 1;
+        enemy.health = ENEMY_BASE.health * Math.pow(ENEMY_SCALE_FACTOR.health, level - 1);
+        enemy.maxHealth = enemy.health;
+
+        const baseSpeed = ENEMY_BASE.speed * Math.pow(ENEMY_SCALE_FACTOR.speed, level - 1);
+        const variedSpeed = baseSpeed * Phaser.Math.FloatBetween(0.8, 1.2);
+        enemy.originalSpeed = -variedSpeed;
+
+        enemy.setVelocityX(enemy.originalSpeed);
+        enemy.setVelocityY(0);
+
+        if (enemy.body) {
+            enemy.body.setBounce(0);
+            enemy.body.setSize(enemy.width * 0.8, enemy.height * 0.8);
+            enemy.body.setOffset((enemy.width - enemy.body.width) / 2, (enemy.height - enemy.body.height) / 2);
         }
     }
 
-    if (t <= 0 || !isFinite(t)) t = dist / speed;
+    manageBarrierCrowd() {
+        let atBarrierCount = 0;
 
-    let px = target.x + tx * t;
-    let py = target.y + ty * t;
+        enemies.children.iterate(enemy => {
+            if (!enemy.active) return;
+            if (this.physics.overlap(enemy, barrierZone)) {
+                atBarrierCount++;
+            }
+        });
 
-    // ── NEW: Clamp prediction to the stop line (barrier) ─────────────
-    px = Math.max(px, stopLine.x);
+        const shouldStopAll = atBarrierCount >= MAX_CROWD_AT_BARRIER;
 
-    const angle = Phaser.Math.Angle.Between(spawnX, spawnY, px, py);
-    star.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+        enemies.children.iterate(enemy => {
+            if (!enemy.active) return;
+            if (shouldStopAll) {
+                enemy.setVelocityX(0);
+                enemy.setVelocityY(0);
+            } else {
+                if (Math.abs(enemy.body.velocity.x) < 10) {
+                    enemy.setVelocityX(enemy.originalSpeed);
+                }
+                enemy.setVelocityY(0);
+            }
+        });
+    }
+
+    hitEnemy(projectile, enemy) {
+        if (projectile.hitEnemies.has(enemy)) return;
+        projectile.hitEnemies.add(enemy);
+
+        enemy.health -= playerStats.attack;
+        if (enemy.health < enemy.maxHealth) enemy.setTint(0xffaa00);
+        if (enemy.health <= 0) {
+            enemy.destroy();
+            playerStats.totalXP += 50;
+            computeLevelAndStats(this);
+            updateXpBar();
+            if (shootTimer) shootTimer.delay = 1000 / playerStats.fireRate;
+        }
+
+        projectile.pierceHits = (projectile.pierceHits || 0) + 1;
+        if (projectile.pierceHits > playerStats.pierce) projectile.destroy();
+    }
 }
 
 // =============================================
@@ -746,17 +639,12 @@ function shootAtTarget(target) {
 // =============================================
 
 const config = {
+    pauseOnBlur: false,
     type: Phaser.AUTO,
     width: 1440,
     height: 720,
-    physics: {
-        default: 'arcade',
-        arcade: { gravity: { y: 0 }, debug: false }
-    },
-    scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    },
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [Preloader, Castle]
 };
 
