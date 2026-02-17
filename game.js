@@ -2,7 +2,7 @@
 // STATS & CONFIGURATION
 // =============================================
 
-// ── CHARACTER DEFINITIONS ───────────────────────────────────────
+// ── CHARACTER DEFINITIONS + INDIVIDUAL BOOST PROGRESSION ────────
 const CHARACTERS = [
     {
         id: 0,
@@ -11,18 +11,24 @@ const CHARACTERS = [
         spriteScale: 3.0,
         portraitKey: 'monap',
         baseStats: {
-            attack: 50,
+            attack: 10,
             projectileTravelSpeed: 220,
             fireRate: 0.40,
             projectilesCount: 1,
-            pierce: 1
+            pierce: 0
         },
         projectileConfig: {
             key: 'fb001',
             animKey: 'fireball_anim',
             scale: 2.6,
             bodySize: 104
-        }
+        },
+        boostProgression: [
+            { threshold: 25,  attack: +8,  projectileTravelSpeed: +20, fireRate: -0.05, projectilesCount: 0, pierce: 0 },
+            { threshold: 50,  attack: +18, projectileTravelSpeed: +40, fireRate: -0.10, projectilesCount: +1, pierce: +1 },
+            { threshold: 75,  attack: +12, projectileTravelSpeed: +30, fireRate: -0.04, projectilesCount: 0, pierce: +1 },
+            { threshold: 100, attack: +25, projectileTravelSpeed: +60, fireRate: -0.08, projectilesCount: +1, pierce: +1 }
+        ]
     },
     {
         id: 1,
@@ -31,7 +37,7 @@ const CHARACTERS = [
         spriteScale: 3.0,
         portraitKey: 'monap',
         baseStats: {
-            attack: 50,
+            attack: 10,
             projectileTravelSpeed: 220,
             fireRate: 0.40,
             projectilesCount: 1,
@@ -42,7 +48,13 @@ const CHARACTERS = [
             animKey: 'shuriken_anim',
             scale: 2.6,
             bodySize: 44
-        }
+        },
+        boostProgression: [
+            { threshold: 25,  attack: +6,  projectileTravelSpeed: +15, fireRate: -0.04, projectilesCount: 0, pierce: 0 },
+            { threshold: 50,  attack: +14, projectileTravelSpeed: +35, fireRate: -0.08, projectilesCount: +1, pierce: +1 },
+            { threshold: 75,  attack: +10, projectileTravelSpeed: +25, fireRate: -0.05, projectilesCount: 0, pierce: +1 },
+            { threshold: 100, attack: +20, projectileTravelSpeed: +55, fireRate: -0.07, projectilesCount: +1, pierce: +1 }
+        ]
     },
     {
         id: 2,
@@ -51,7 +63,7 @@ const CHARACTERS = [
         spriteScale: 3.0,
         portraitKey: 'monap',
         baseStats: {
-            attack: 50,
+            attack: 10,
             projectileTravelSpeed: 220,
             fireRate: 0.40,
             projectilesCount: 1,
@@ -62,7 +74,13 @@ const CHARACTERS = [
             animKey: 'fireball_anim',
             scale: 2.6,
             bodySize: 104
-        }
+        },
+        boostProgression: [
+            { threshold: 25,  attack: +9,  projectileTravelSpeed: +25, fireRate: -0.06, projectilesCount: 0, pierce: 0 },
+            { threshold: 50,  attack: +20, projectileTravelSpeed: +45, fireRate: -0.11, projectilesCount: +1, pierce: +1 },
+            { threshold: 75,  attack: +15, projectileTravelSpeed: +35, fireRate: -0.05, projectilesCount: 0, pierce: +2 },
+            { threshold: 100, attack: +30, projectileTravelSpeed: +70, fireRate: -0.10, projectilesCount: +1, pierce: +1 }
+        ]
     },
     {
         id: 3,
@@ -71,7 +89,7 @@ const CHARACTERS = [
         spriteScale: 3.0,
         portraitKey: 'monap',
         baseStats: {
-            attack: 50,
+            attack: 10,
             projectileTravelSpeed: 220,
             fireRate: 0.40,
             projectilesCount: 1,
@@ -82,159 +100,91 @@ const CHARACTERS = [
             animKey: 'fireball_anim',
             scale: 2.6,
             bodySize: 104
-        }
+        },
+        boostProgression: [
+            { threshold: 25,  attack: +7,  projectileTravelSpeed: +18, fireRate: -0.05, projectilesCount: 0, pierce: 0 },
+            { threshold: 50,  attack: +16, projectileTravelSpeed: +38, fireRate: -0.09, projectilesCount: +1, pierce: +1 },
+            { threshold: 75,  attack: +11, projectileTravelSpeed: +28, fireRate: -0.04, projectilesCount: 0, pierce: +1 },
+            { threshold: 100, attack: +22, projectileTravelSpeed: +58, fireRate: -0.08, projectilesCount: +1, pierce: +1 }
+        ]
     }
 ];
 
 let currentCharacterIndex = 0;
 
-// ── ENEMY BASE STATS ────────────────────────────────────────────
-const ENEMY_BASE = { health: 100, speed: 52.5, tint: 0xffffff, scale: 2.4 };
-
-// ── ENEMY SCALING ───────────────────────────────────────────────
-const ENEMY_SCALE_FACTOR = { health: 1.10, speed: 1.05 };
+// ── ENEMY BASE STATS (fixed) ────────────────────────────────────
+const ENEMY_BASE = { health: 100, speed: 30.5, tint: 0xffffff };
 
 // ── GENERAL GAME CONFIG ─────────────────────────────────────────
-const MAX_LEVEL = 100;
-const XP_GROWTH = 1.5;
-const XP_BASE = 200;
-let spawnDelay = 100;
-const MAX_ENEMIES_ON_SCREEN = 100;
-const MAX_CROWD_AT_BARRIER = 10;
+let spawnDelay = 1000;
+const MAX_ENEMIES_ON_SCREEN = 20;
+const BOOST_PER_KILL = 1;  // Changed to 1 as requested
+const MAX_BOOST = 100;
+
+// ── LANE CONFIG ─────────────────────────────────────────────────
+const LANES = [360, 420, 480];
+
+// ── ENEMY VISUAL SIZE & SPACING ─────────────────────────────────
+const ENEMY_VISUAL_SCALE = 4.4;
+const MIN_ENEMY_SEPARATION = 220;
+const LANE_PROXIMITY = 60;
 
 // ── BARRIER ZONE CONFIG ─────────────────────────────────────────
 const BARRIER_ZONE_X = 520;
 const BARRIER_ZONE_WIDTH = 120;
 const BARRIER_ZONE_HEIGHT = 720;
-const BARRIER_REFERENCE_X = 500;  // Used for prioritizing closest-to-barrier enemies
 
 // ── GAME VARIABLES ──────────────────────────────────────────────
 let player, enemies, fireballs, stopLine, barrierZone;
 let statsOverlay, statsCloseButton, statsGridContainer;
-let topLeftStatsText, xpBarBackground, xpBarFill;
+let topLeftStatsText, boostLabelText, boostBarBackground, boostBarFill;
 let spawnTimer, shootTimer;
-let playerStats = {};
+let playerStats = { boost: 0 };
 let statsButton;
 let selectionOverlay;
+let lastSpawnLaneIndex = -1;
 
 // =============================================
-// GLOBAL HELPER FUNCTIONS
+// BOOST & STATS HELPERS
 // =============================================
 
-function autoShootAtNearest() {
-    if (!player || !player.active) return;
+function applyBoostBonuses() {
+    const char = CHARACTERS[currentCharacterIndex];
+    const base = char.baseStats;
 
-    const targets = [];
-    enemies.children.iterate(e => {
-        if (e.active) targets.push(e);
+    playerStats.attack = base.attack;
+    playerStats.projectileTravelSpeed = base.projectileTravelSpeed;
+    playerStats.fireRate = base.fireRate;
+    playerStats.projectilesCount = base.projectilesCount;
+    playerStats.pierce = base.pierce;
+
+    char.boostProgression.forEach(bonus => {
+        if (playerStats.boost >= bonus.threshold) {
+            playerStats.attack += bonus.attack || 0;
+            playerStats.projectileTravelSpeed += bonus.projectileTravelSpeed || 0;
+            playerStats.fireRate += bonus.fireRate || 0;
+            playerStats.projectilesCount += bonus.projectilesCount || 0;
+            playerStats.pierce += bonus.pierce || 0;
+        }
     });
 
-    if (targets.length === 0) return;
-
-    // Sort by distance to the barrier (smallest x = closest to barrier)
-    const priority = targets.sort((a, b) => {
-        return a.x - b.x;  // lower x = closer to left/barrier → higher priority
-    });
-
-    const count = Math.min(playerStats.projectilesCount, priority.length);
-    for (let i = 0; i < count; i++) {
-        shootAtTarget(priority[i]);
-    }
-}
-
-function shootAtTarget(target) {
-    if (!target || !target.active) return;
-    const spawnX = player.x;
-    const spawnY = player.y - (player.displayHeight / 2) * 0.5;
-
-    const config = CHARACTERS[currentCharacterIndex].projectileConfig;
-    const projectile = fireballs.create(spawnX, spawnY, config.key);
-    projectile.play(config.animKey);
-    projectile.setScale(config.scale);
-    projectile.setOrigin(0.5, 0.5);
-    projectile.pierceHits = 0;
-    projectile.hitEnemies = new Set();
-
-    const bodySize = config.bodySize;
-    projectile.body.setSize(bodySize, bodySize);
-    projectile.body.setOffset((projectile.width - bodySize) / 2, (projectile.height - bodySize) / 2);
-
-    const dx = target.x - spawnX;
-    const dy = target.y - spawnY;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    if (dist < 1) { projectile.setVelocity(0, 0); return; }
-
-    const speed = playerStats.projectileTravelSpeed;
-    const angle = Phaser.Math.Angle.Between(spawnX, spawnY, target.x, target.y);
-    projectile.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
-    projectile.rotation = angle;
-}
-
-// =============================================
-// XP & LEVEL & STATS HELPERS
-// =============================================
-
-function computeLevelFromTotalXP(totalXP) {
-    if (totalXP < XP_BASE) return 1;
-    let level = 1;
-    let cumulative = 0;
-    while (true) {
-        const nextThreshold = cumulative + Math.round(XP_BASE * Math.pow(XP_GROWTH, level - 1));
-        if (totalXP < nextThreshold) return level;
-        cumulative = nextThreshold;
-        level++;
-        if (level >= MAX_LEVEL) return MAX_LEVEL;
-    }
-}
-
-function getXPToNextLevel(level) {
-    return Math.round(XP_BASE * Math.pow(XP_GROWTH, level - 1));
-}
-
-function getTotalXPForLevel(level) {
-    if (level <= 1) return 0;
-    let total = 0;
-    for (let i = 1; i < level; i++) {
-        total += Math.round(XP_BASE * Math.pow(XP_GROWTH, i - 1));
-    }
-    return total;
-}
-
-function computeLevelAndStats(scene) {
-    const totalXP = playerStats.totalXP || 0;
-    const level = computeLevelFromTotalXP(totalXP);
-    const xpRequiredForThisLevel = getTotalXPForLevel(level);
-    const currentXP = totalXP - xpRequiredForThisLevel;
-    const nextLevelXP = getXPToNextLevel(level);
-    playerStats.level = level;
-    const basePierce = CHARACTERS[currentCharacterIndex].baseStats.pierce || 0;
-    playerStats.pierce = basePierce + Math.floor(level / 5);
-    playerStats.currentXP = Math.max(0, currentXP);
-    playerStats.nextLevelXP = nextLevelXP;
-    const bases = CHARACTERS[currentCharacterIndex].baseStats;
-    playerStats.attack = bases.attack * Math.pow(1.1, level - 1);
-    playerStats.projectileTravelSpeed = bases.projectileTravelSpeed;
-    playerStats.fireRate = bases.fireRate * Math.pow(1.1, level - 1);
-    playerStats.projectilesCount = bases.projectilesCount + Math.floor(level / 5);
     updateTopLeftStats();
-    updateXpBar();
+    updateBoostBar();
     updateStatsGrid();
 }
 
 function updateTopLeftStats() {
     if (!topLeftStatsText) return;
     const charName = CHARACTERS[currentCharacterIndex].name;
-    topLeftStatsText.setText(`${charName}\nLevel: ${playerStats.level}`);
+    topLeftStatsText.setText(`${charName}`);
 }
 
-function updateXpBar() {
-    if (!xpBarBackground || !xpBarFill) return;
-    const progress = playerStats.nextLevelXP > 0
-        ? Math.min(playerStats.currentXP / playerStats.nextLevelXP, 1)
-        : 0;
+function updateBoostBar() {
+    if (!boostBarBackground || !boostBarFill) return;
+    const progress = Math.min(playerStats.boost / MAX_BOOST, 1);
     const barWidth = 220;
-    xpBarFill.setScale(progress, 1);
-    xpBarFill.x = xpBarBackground.x - (barWidth / 2) + (barWidth * progress / 2);
+    boostBarFill.setScale(progress, 1);
+    boostBarFill.x = boostBarBackground.x - (barWidth / 2) + (barWidth * progress / 2);
 }
 
 function updateStatsGrid() {
@@ -252,8 +202,7 @@ function updateStatsGrid() {
         { label: 'Projectiles', value: playerStats.projectilesCount },
         { label: 'Proj. Speed', value: Math.round(playerStats.projectileTravelSpeed) },
         { label: 'Pierce', value: playerStats.pierce },
-        { label: 'Level', value: playerStats.level },
-        { label: 'XP', value: `${Math.floor(playerStats.currentXP || 0)} / ${playerStats.nextLevelXP || XP_BASE}` }
+        { label: 'Boost', value: `${Math.floor(playerStats.boost)}%` }
     ];
 
     for (let i = 0; i < statsPairs.length; i += 2) {
@@ -293,7 +242,7 @@ class Preloader extends Phaser.Scene {
     constructor() { super('Preloader'); }
 
     preload() {
-        this.load.image('castle', 'assets/castle-bg.png');
+        this.load.image('castle', 'assets/backgrounds/screenshot.png');
         this.load.spritesheet('dude', 'assets/dude.png', { frameWidth: 63, frameHeight: 74 });
         this.load.spritesheet('slime', 'assets/slime.png', { frameWidth: 31, frameHeight: 24 });
         this.load.spritesheet('shuriken', 'assets/shuriken.png', { frameWidth: 22, frameHeight: 21 });
@@ -318,20 +267,35 @@ class Castle extends Phaser.Scene {
     constructor() { super('Castle'); }
 
     create() {
-        playerStats.totalXP = 0;
-        computeLevelAndStats(this);
+        const bg = this.add.image(0, 0, 'castle')
+            .setOrigin(0, 0)
+            .setDepth(-1);
 
-        this.add.image(720, 360, 'castle').setOrigin(0.5);
+        const scaleX = this.scale.width / bg.width;
+        const scaleY = this.scale.height / bg.height;
+        const scale = Math.max(scaleX, scaleY);
+
+        bg.setScale(scale);
+        bg.setPosition(
+            (this.scale.width - bg.displayWidth) / 2,
+            (this.scale.height - bg.displayHeight) / 2
+        );
+
+        playerStats.boost = 0;
+        applyBoostBonuses();
+
         this.add.text(720, 80, 'Castle Defense', { fontSize: '48px', fill: '#ffffff', stroke: '#000000', strokeThickness: 10 }).setOrigin(0.5);
 
-        topLeftStatsText = this.add.text(20, 20, '', { fontSize: '24px', fill: '#ffffff', stroke: '#000000', strokeThickness: 6, lineSpacing: 4 });
+        //topLeftStatsText = this.add.text(20, 20, '', { fontSize: '32px', fill: '#ffffff', stroke: '#000000', strokeThickness: 6, lineSpacing: 4 });
+
+        boostLabelText = this.add.text(20, 60, '', { fontSize: '32px', fill: '#ffffff', stroke: '#000000', strokeThickness: 6 });
+
+        //boostLabelText = this.add.text(20, 58, 'Boost:', { fontSize: '32px', fill: '#ffffff', stroke: '#000000', strokeThickness: 6 });
 
         const barX = 130, barY = 85, barWidth = 220, barHeight = 18;
-        xpBarBackground = this.add.rectangle(barX, barY, barWidth, barHeight, 0x000000).setStrokeStyle(2, 0xffffff).setOrigin(0.5, -0.5);
-        xpBarFill = this.add.rectangle(barX, barY, barWidth, barHeight - 4, 0xffffff).setOrigin(0.5, -0.5);
-
-        updateTopLeftStats();
-        updateXpBar();
+        boostBarBackground = this.add.rectangle(barX, barY, barWidth, barHeight, 0x000000).setStrokeStyle(2, 0xffffff).setOrigin(0.5, -0.5);
+        boostBarFill = this.add.rectangle(barX, barY, barWidth, barHeight - 4, 0x00ff88).setOrigin(0.5, -0.5);
+        updateBoostBar();
 
         enemies = this.physics.add.group();
         fireballs = this.physics.add.group();
@@ -350,14 +314,13 @@ class Castle extends Phaser.Scene {
 
         this.physics.add.overlap(fireballs, enemies, this.hitEnemy, null, this);
 
-        // Barrier counting zone
         barrierZone = this.add.rectangle(BARRIER_ZONE_X, 360, BARRIER_ZONE_WIDTH, BARRIER_ZONE_HEIGHT, 0x00ff00, 0);
         this.physics.add.existing(barrierZone);
         barrierZone.body.allowGravity = false;
         barrierZone.body.immovable = true;
         barrierZone.body.moves = false;
 
-        // Stats button
+        // Stats button is created but NEVER shown during gameplay
         statsButton = this.add.text(400, 40, 'Stats', {
             fontSize: '32px',
             fill: '#00ffcc',
@@ -365,10 +328,8 @@ class Castle extends Phaser.Scene {
             padding: { left: 16, right: 16, top: 8, bottom: 8 }
         }).setOrigin(1, 0)
           .setInteractive()
-          .setVisible(false)
-          .on('pointerdown', () => this.showStatsOverlay());
+          .setVisible(false);  // hidden
 
-        // Stats overlay
         statsOverlay = this.add.container(720, 360).setDepth(15).setVisible(false);
 
         const overlayBg = this.add.rectangle(0, 0, 760, 520, 0x112233)
@@ -417,60 +378,45 @@ class Castle extends Phaser.Scene {
         this.bigPreviewSprite = null;
 
         this.previewName = this.add.text(0, 110, CHARACTERS[0].name, {
-            fontSize: '32px',
+            fontSize: '48px',
             fontStyle: 'bold',
             fill: '#aaffdd',
             stroke: '#000000',
-            strokeThickness: 9
+            strokeThickness: 12
         }).setOrigin(0.5, -0.4);
         previewContainer.add(this.previewName);
 
-        const gridContainer = this.add.container(0, 100);
-        this.selectionOverlay.add(gridContainer);
+        // Left arrow
+        const leftArrow = this.add.text(-300, 0, '←', {
+            fontSize: '80px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 12
+        }).setOrigin(0.5).setInteractive()
+          .on('pointerdown', () => {
+              currentCharacterIndex = (currentCharacterIndex - 1 + CHARACTERS.length) % CHARACTERS.length;
+              this.updateCharacterPreview();
+          })
+          .on('pointerover', () => leftArrow.setStyle({ fill: '#ffffcc' }))
+          .on('pointerout', () => leftArrow.setStyle({ fill: '#ffffff' }));
+        this.selectionOverlay.add(leftArrow);
 
-        const charsPerRow = 6;
-        const portraitW = 120;
-        const portraitH = 140;
-        const spacingX = 148;
-        const startX = -(charsPerRow - 1) * spacingX / 2;
+        // Right arrow
+        const rightArrow = this.add.text(300, 0, '→', {
+            fontSize: '80px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 12
+        }).setOrigin(0.5).setInteractive()
+          .on('pointerdown', () => {
+              currentCharacterIndex = (currentCharacterIndex + 1) % CHARACTERS.length;
+              this.updateCharacterPreview();
+          })
+          .on('pointerover', () => rightArrow.setStyle({ fill: '#ffffcc' }))
+          .on('pointerout', () => rightArrow.setStyle({ fill: '#ffffff' }));
+        this.selectionOverlay.add(rightArrow);
 
-        this.portraitFrames = [];
-
-        CHARACTERS.forEach((char, i) => {
-            const px = startX + i * spacingX;
-            const py = 0;
-
-            const slot = this.add.container(px, py);
-            gridContainer.add(slot);
-
-            const bg = this.add.rectangle(0, 0, portraitW, portraitH, 0x334455)
-                .setStrokeStyle(3, 0x667799);
-            slot.add(bg);
-
-            const border = this.add.rectangle(0, 0, portraitW + 12, portraitH + 12, 0xffffff, 0)
-                .setStrokeStyle(5, i === currentCharacterIndex ? 0xffff55 : 0x667799);
-            this.portraitFrames.push(border);
-            slot.add(border);
-
-            const portrait = this.add.image(0, 0, char.portraitKey)
-                .setDisplaySize(portraitW - 16, portraitH - 16)
-                .setOrigin(0.5);
-            slot.add(portrait);
-
-            const hitArea = this.add.rectangle(0, 0, portraitW + 20, portraitH + 20, 0xffffff, 0)
-                .setInteractive();
-
-            hitArea.on('pointerdown', () => {
-                currentCharacterIndex = i;
-                this.portraitFrames.forEach((b, idx) => {
-                    b.setStrokeStyle(5, idx === i ? 0xffff55 : 0x667799);
-                });
-                this.updateBigPreview();
-            });
-
-            slot.add(hitArea);
-        });
-
+        // Start button
         const startBtn = this.add.text(0, overlayH/2 - 70, 'DEFEND THE CASTLE', {
             fontSize: '42px',
             fontStyle: 'bold',
@@ -487,11 +433,10 @@ class Castle extends Phaser.Scene {
         .on('pointerdown', () => {
             this.selectionOverlay.setVisible(false);
             this.resumeGameplay();
-            statsButton.setVisible(true);
         });
         this.selectionOverlay.add(startBtn);
 
-        this.updateBigPreview = () => {
+        this.updateCharacterPreview = () => {
             if (this.bigPreviewSprite) this.bigPreviewSprite.destroy();
             const char = CHARACTERS[currentCharacterIndex];
             this.bigPreviewSprite = this.add.sprite(0, 60, char.spriteKey)
@@ -502,7 +447,7 @@ class Castle extends Phaser.Scene {
             this.previewName.setText(char.name);
         };
 
-        this.updateBigPreview();
+        this.updateCharacterPreview();
     }
 
     pauseGameplay() {
@@ -512,9 +457,12 @@ class Castle extends Phaser.Scene {
     }
 
     resumeGameplay() {
+        if (boostLabelText) {
+        boostLabelText.setText(CHARACTERS[currentCharacterIndex].name + ':');
+        }
         if (player) player.destroy();
 
-        player = this.physics.add.sprite(280, 400, CHARACTERS[currentCharacterIndex].spriteKey);
+        player = this.physics.add.sprite(280, 520, CHARACTERS[currentCharacterIndex].spriteKey);
         player.setScale(CHARACTERS[currentCharacterIndex].spriteScale);
         player.setOrigin(0.5, 1.0);
         player.body.setSize(32, 64);
@@ -531,9 +479,11 @@ class Castle extends Phaser.Scene {
             loop: true
         });
 
+        applyBoostBonuses();
+
         shootTimer = this.time.addEvent({
             delay: 1000 / playerStats.fireRate,
-            callback: autoShootAtNearest,
+            callback: this.autoShootAtNearest,
             callbackScope: this,
             loop: true
         });
@@ -545,8 +495,54 @@ class Castle extends Phaser.Scene {
             loop: true
         });
 
-        computeLevelAndStats(this);
-        statsButton.setVisible(true);
+        updateTopLeftStats();
+        // No statsButton.setVisible(true) — button is hidden forever
+    }
+
+    autoShootAtNearest() {
+        if (!player || !player.active) return;
+
+        const targets = [];
+        enemies.children.iterate(e => {
+            if (e.active) targets.push(e);
+        });
+
+        if (targets.length === 0) return;
+
+        const priority = targets.sort((a, b) => a.x - b.x);
+        const count = Math.min(playerStats.projectilesCount, priority.length);
+        for (let i = 0; i < count; i++) {
+            this.shootAtTarget(priority[i]);
+        }
+    }
+
+    shootAtTarget(target) {
+        if (!target || !target.active) return;
+
+        const spawnX = player.x;
+        const spawnY = player.y - (player.displayHeight / 2);
+
+        const config = CHARACTERS[currentCharacterIndex].projectileConfig;
+        const projectile = fireballs.create(spawnX, spawnY, config.key);
+        projectile.play(config.animKey);
+        projectile.setScale(config.scale);
+        projectile.setOrigin(0.5, 0.5);
+        projectile.pierceHits = 0;
+        projectile.hitEnemies = new Set();
+
+        const bodySize = config.bodySize;
+        projectile.body.setSize(bodySize, bodySize);
+        projectile.body.setOffset((projectile.width - bodySize) / 2, (projectile.height - bodySize) / 2);
+
+        const dx = target.x - spawnX;
+        const dy = target.y - spawnY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 1) { projectile.setVelocity(0, 0); return; }
+
+        const speed = playerStats.projectileTravelSpeed;
+        const angle = Phaser.Math.Angle.Between(spawnX, spawnY, target.x, target.y);
+        projectile.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+        projectile.rotation = angle;
     }
 
     showStatsOverlay() {
@@ -559,57 +555,102 @@ class Castle extends Phaser.Scene {
         enemies.children.iterate(e => { if (e.active) currentEnemyCount++; });
         if (currentEnemyCount >= MAX_ENEMIES_ON_SCREEN) return;
 
-        const lanes = [120, 180, 240, 300, 360, 420, 480, 540, 600];
-        const chosenLane = Phaser.Utils.Array.GetRandom(lanes);
-        const randomOffset = Phaser.Math.Between(-20, 20);
-        const spawnY = chosenLane + randomOffset;
+        let atBarrierCount = 0;
+        enemies.children.iterate(enemy => {
+            if (enemy.active && this.physics.overlap(enemy, barrierZone)) {
+                atBarrierCount++;
+            }
+        });
+        if (atBarrierCount >= 3) return;
 
-        const enemy = enemies.create(1500, spawnY, 'slime');
+        let availableLanes = LANES.filter((_, idx) => idx !== lastSpawnLaneIndex);
+        if (availableLanes.length === 0) availableLanes = LANES;
 
-        const visualScale = ENEMY_BASE.scale * 1.8 * 0.67;
-        enemy.setScale(visualScale);
-        enemy.setTint(ENEMY_BASE.tint);
-        enemy.play('slime_anim');
+        for (let i = 0; i < availableLanes.length; i++) {
+            const candidateY = availableLanes[i];
 
-        const level = playerStats.level || 1;
-        enemy.health = ENEMY_BASE.health * Math.pow(ENEMY_SCALE_FACTOR.health, level - 1);
-        enemy.maxHealth = enemy.health;
+            let isClear = true;
+            enemies.children.iterate(enemy => {
+                if (!enemy.active) return;
 
-        const baseSpeed = ENEMY_BASE.speed * Math.pow(ENEMY_SCALE_FACTOR.speed, level - 1);
-        const variedSpeed = baseSpeed * Phaser.Math.FloatBetween(0.8, 1.2);
-        enemy.originalSpeed = -variedSpeed;
+                const dx = 1500 - enemy.x;
+                const dy = candidateY - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
 
-        enemy.setVelocityX(enemy.originalSpeed);
-        enemy.setVelocityY(0);
+                if (dist < MIN_ENEMY_SEPARATION) {
+                    isClear = false;
+                    return false;
+                }
+            });
 
-        if (enemy.body) {
-            enemy.body.setBounce(0);
-            enemy.body.setSize(enemy.width * 0.8, enemy.height * 0.8);
-            enemy.body.setOffset((enemy.width - enemy.body.width) / 2, (enemy.height - enemy.body.height) / 2);
+            if (isClear) {
+                const enemy = enemies.create(1500, candidateY, 'slime');
+
+                enemy.setScale(ENEMY_VISUAL_SCALE);
+                enemy.setTint(ENEMY_BASE.tint);
+                enemy.play('slime_anim');
+
+                enemy.health = ENEMY_BASE.health;
+                enemy.maxHealth = ENEMY_BASE.health;
+                enemy.barrierBlocked = false;
+
+                const baseSpeed = ENEMY_BASE.speed;
+                const variedSpeed = baseSpeed * Phaser.Math.FloatBetween(0.85, 1.15);
+                enemy.originalSpeed = -variedSpeed;
+
+                enemy.setVelocityX(enemy.originalSpeed);
+                enemy.setVelocityY(0);
+
+                if (enemy.body) {
+                    enemy.body.setBounce(0);
+                    enemy.body.setSize(enemy.width * 0.5, enemy.height * 0.5);
+                    enemy.body.setOffset((enemy.width - enemy.body.width) / 2, (enemy.height - enemy.body.height) / 2);
+                }
+
+                lastSpawnLaneIndex = LANES.indexOf(candidateY);
+                return;
+            }
         }
     }
 
     manageBarrierCrowd() {
-        let atBarrierCount = 0;
-
         enemies.children.iterate(enemy => {
-            if (!enemy.active) return;
-            if (this.physics.overlap(enemy, barrierZone)) {
-                atBarrierCount++;
+            if (enemy.active) {
+                if (this.physics.overlap(enemy, barrierZone)) {
+                    enemy.setVelocityX(0);
+                    enemy.setVelocityY(0);
+                    enemy.barrierBlocked = true;
+                } else {
+                    enemy.barrierBlocked = false;
+                }
             }
         });
 
-        const shouldStopAll = atBarrierCount >= MAX_CROWD_AT_BARRIER;
-
         enemies.children.iterate(enemy => {
-            if (!enemy.active) return;
-            if (shouldStopAll) {
-                enemy.setVelocityX(0);
-                enemy.setVelocityY(0);
-            } else {
-                if (Math.abs(enemy.body.velocity.x) < 10) {
+            if (!enemy.active || enemy.barrierBlocked) return;
+
+            let shouldMove = true;
+
+            enemies.children.iterate(other => {
+                if (!other.active || other === enemy) return;
+
+                if (Math.abs(other.y - enemy.y) > LANE_PROXIMITY) return;
+                if (other.x >= enemy.x) return;
+
+                if (other.body.velocity.x === 0 || other.barrierBlocked) {
+                    if (enemy.x - other.x < MIN_ENEMY_SEPARATION + 40) {
+                        shouldMove = false;
+                        return false;
+                    }
+                }
+            });
+
+            if (shouldMove) {
+                if (Math.abs(enemy.body.velocity.x) < 5) {
                     enemy.setVelocityX(enemy.originalSpeed);
                 }
+            } else {
+                enemy.setVelocityX(0);
                 enemy.setVelocityY(0);
             }
         });
@@ -623,9 +664,9 @@ class Castle extends Phaser.Scene {
         if (enemy.health < enemy.maxHealth) enemy.setTint(0xffaa00);
         if (enemy.health <= 0) {
             enemy.destroy();
-            playerStats.totalXP += 50;
-            computeLevelAndStats(this);
-            updateXpBar();
+            playerStats.boost = Math.min(playerStats.boost + BOOST_PER_KILL, MAX_BOOST);
+            applyBoostBonuses();
+            updateBoostBar();
             if (shootTimer) shootTimer.delay = 1000 / playerStats.fireRate;
         }
 
