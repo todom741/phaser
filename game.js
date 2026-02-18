@@ -2,155 +2,88 @@
 // STATS & CONFIGURATION
 // =============================================
 
-// ── CHARACTER DEFINITIONS + INDIVIDUAL BOOST PROGRESSION ────────
-const CHARACTERS = [
-    {
-        id: 0,
-        name: 'Mona',
-        spriteKey: 'dude',
-        spriteScale: 3.0,
-        portraitKey: 'monap',
-        baseStats: {
-            attack: 10,
-            projectileTravelSpeed: 220,
-            fireRate: 0.40,
-            projectilesCount: 1,
-            pierce: 0
-        },
-        projectileConfig: {
-            key: 'fb001',
-            animKey: 'fireball_anim',
-            scale: 2.6,
-            bodySize: 104
-        },
-        boostProgression: [
-            { threshold: 25,  attack: +8,  projectileTravelSpeed: +20, fireRate: -0.05, projectilesCount: 0, pierce: 0 },
-            { threshold: 50,  attack: +18, projectileTravelSpeed: +40, fireRate: -0.10, projectilesCount: +1, pierce: +1 },
-            { threshold: 75,  attack: +12, projectileTravelSpeed: +30, fireRate: -0.04, projectilesCount: 0, pierce: +1 },
-            { threshold: 100, attack: +25, projectileTravelSpeed: +60, fireRate: -0.08, projectilesCount: +1, pierce: +1 }
-        ]
+// ── SINGLE CHARACTER + COSTUMES ────────────────────────────────
+const CHARACTER = {
+    baseName: 'Mona',
+    spriteKey: 'dude',
+    spriteScale: 3.0,
+    baseStats: {
+        attack: 50,
+        projectileTravelSpeed: 220,
+        fireRate: 0.40,
+        projectilesCount: 1,
+        pierce: 0
     },
-    {
-        id: 1,
-        name: 'Luna',
-        spriteKey: 'dude',
-        spriteScale: 3.0,
-        portraitKey: 'monap',
-        baseStats: {
-            attack: 10,
-            projectileTravelSpeed: 220,
-            fireRate: 0.40,
-            projectilesCount: 1,
-            pierce: 0
-        },
-        projectileConfig: {
-            key: 'shuriken',
-            animKey: 'shuriken_anim',
-            scale: 2.6,
-            bodySize: 44
-        },
-        boostProgression: [
-            { threshold: 25,  attack: +6,  projectileTravelSpeed: +15, fireRate: -0.04, projectilesCount: 0, pierce: 0 },
-            { threshold: 50,  attack: +14, projectileTravelSpeed: +35, fireRate: -0.08, projectilesCount: +1, pierce: +1 },
-            { threshold: 75,  attack: +10, projectileTravelSpeed: +25, fireRate: -0.05, projectilesCount: 0, pierce: +1 },
-            { threshold: 100, attack: +20, projectileTravelSpeed: +55, fireRate: -0.07, projectilesCount: +1, pierce: +1 }
-        ]
-    },
-    {
-        id: 2,
-        name: 'Riven',
-        spriteKey: 'dude',
-        spriteScale: 3.0,
-        portraitKey: 'monap',
-        baseStats: {
-            attack: 10,
-            projectileTravelSpeed: 220,
-            fireRate: 0.40,
-            projectilesCount: 1,
-            pierce: 0
-        },
-        projectileConfig: {
-            key: 'fb001',
-            animKey: 'fireball_anim',
-            scale: 2.6,
-            bodySize: 104
-        },
-        boostProgression: [
-            { threshold: 25,  attack: +9,  projectileTravelSpeed: +25, fireRate: -0.06, projectilesCount: 0, pierce: 0 },
-            { threshold: 50,  attack: +20, projectileTravelSpeed: +45, fireRate: -0.11, projectilesCount: +1, pierce: +1 },
-            { threshold: 75,  attack: +15, projectileTravelSpeed: +35, fireRate: -0.05, projectilesCount: 0, pierce: +2 },
-            { threshold: 100, attack: +30, projectileTravelSpeed: +70, fireRate: -0.10, projectilesCount: +1, pierce: +1 }
-        ]
-    },
-    {
-        id: 3,
-        name: 'Zephyr',
-        spriteKey: 'dude',
-        spriteScale: 3.0,
-        portraitKey: 'monap',
-        baseStats: {
-            attack: 10,
-            projectileTravelSpeed: 220,
-            fireRate: 0.40,
-            projectilesCount: 1,
-            pierce: 0
-        },
-        projectileConfig: {
-            key: 'fb001',
-            animKey: 'fireball_anim',
-            scale: 2.6,
-            bodySize: 104
-        },
-        boostProgression: [
-            { threshold: 25,  attack: +7,  projectileTravelSpeed: +18, fireRate: -0.05, projectilesCount: 0, pierce: 0 },
-            { threshold: 50,  attack: +16, projectileTravelSpeed: +38, fireRate: -0.09, projectilesCount: +1, pierce: +1 },
-            { threshold: 75,  attack: +11, projectileTravelSpeed: +28, fireRate: -0.04, projectilesCount: 0, pierce: +1 },
-            { threshold: 100, attack: +22, projectileTravelSpeed: +58, fireRate: -0.08, projectilesCount: +1, pierce: +1 }
-        ]
-    }
+    boostProgression: [
+        { threshold: 25,  attack: +8,  projectileTravelSpeed: +20, fireRate: -0.05, projectilesCount: 0, pierce: 0 },
+        { threshold: 50,  attack: +18, projectileTravelSpeed: +40, fireRate: -0.10, projectilesCount: +1, pierce: +1 },
+        { threshold: 75,  attack: +12, projectileTravelSpeed: +30, fireRate: -0.04, projectilesCount: 0, pierce: +1 },
+        { threshold: 100, attack: +25, projectileTravelSpeed: +60, fireRate: -0.08, projectilesCount: +1, pierce: +1 }
+    ]
+};
+
+const COSTUMES = [
+    { id: 0, name: 'Mona',        frameOffset: 0,   preselected: ['fire'] },
+    { id: 1, name: 'Schoolgirl',  frameOffset: 8,   preselected: []      }
 ];
 
-let currentCharacterIndex = 0;
+let currentCostumeIndex = 0;
+let selectedElements = [];
 
-// ── ENEMY BASE STATS (fixed) ────────────────────────────────────
-const ENEMY_BASE = { health: 100, speed: 30.5, tint: 0xffffff };
+// Projectile configs
+const FIRE_CONFIG = {
+    key: 'fb001',
+    animKey: 'fireball_anim',
+    scale: 2.6,
+    bodySize: 104
+};
+
+const SHURIKEN_CONFIG = {
+    key: 'shuriken',
+    animKey: 'shuriken_anim',
+    scale: 2.8,
+    bodySize: 44
+};
+
+// ── ENEMY BASE STATS ────────────────────────────────────────────
+const ENEMY_BASE = { health: 100, speed: 32, tint: 0xffffff };
 
 // ── GENERAL GAME CONFIG ─────────────────────────────────────────
-let spawnDelay = 1000;
-const MAX_ENEMIES_ON_SCREEN = 20;
-const BOOST_PER_KILL = 1;  // Changed to 1 as requested
+const MAX_ENEMIES_ON_SCREEN = 60;
+const BOOST_PER_KILL = 1;
 const MAX_BOOST = 100;
 
-// ── LANE CONFIG ─────────────────────────────────────────────────
-const LANES = [360, 420, 480];
+// ── LANE CONFIG (4 rows) ────────────────────────────────────────
+const LANES = [300, 360, 420, 480];
 
 // ── ENEMY VISUAL SIZE & SPACING ─────────────────────────────────
 const ENEMY_VISUAL_SCALE = 4.4;
-const MIN_ENEMY_SEPARATION = 220;
+const ENEMY_SPACING = 160;
 const LANE_PROXIMITY = 60;
 
 // ── BARRIER ZONE CONFIG ─────────────────────────────────────────
 const BARRIER_ZONE_X = 520;
-const BARRIER_ZONE_WIDTH = 120;
-const BARRIER_ZONE_HEIGHT = 720;
+const BARRIER_ZONE_RIGHT_EDGE = BARRIER_ZONE_X + 120;
 
 // ── GAME VARIABLES ──────────────────────────────────────────────
 let player, enemies, fireballs, stopLine, barrierZone;
 let statsOverlay, statsCloseButton, statsGridContainer;
 let topLeftStatsText, boostLabelText, boostBarBackground, boostBarFill;
-let spawnTimer, shootTimer;
+let shootTimer;
 let playerStats = { boost: 0 };
 let statsButton;
 let selectionOverlay;
-let lastSpawnLaneIndex = -1;
+let laneLastRightmost = {};
+let gold = 0;
+let goldText;
+let goldIcon;
 
 // =============================================
 // BOOST & STATS HELPERS
 // =============================================
 
 function applyBoostBonuses() {
-    const char = CHARACTERS[currentCharacterIndex];
-    const base = char.baseStats;
+    const base = CHARACTER.baseStats;
 
     playerStats.attack = base.attack;
     playerStats.projectileTravelSpeed = base.projectileTravelSpeed;
@@ -158,7 +91,7 @@ function applyBoostBonuses() {
     playerStats.projectilesCount = base.projectilesCount;
     playerStats.pierce = base.pierce;
 
-    char.boostProgression.forEach(bonus => {
+    CHARACTER.boostProgression.forEach(bonus => {
         if (playerStats.boost >= bonus.threshold) {
             playerStats.attack += bonus.attack || 0;
             playerStats.projectileTravelSpeed += bonus.projectileTravelSpeed || 0;
@@ -175,8 +108,8 @@ function applyBoostBonuses() {
 
 function updateTopLeftStats() {
     if (!topLeftStatsText) return;
-    const charName = CHARACTERS[currentCharacterIndex].name;
-    topLeftStatsText.setText(`${charName}`);
+    const costumeName = COSTUMES[currentCostumeIndex].name;
+    topLeftStatsText.setText(`${costumeName}`);
 }
 
 function updateBoostBar() {
@@ -190,8 +123,8 @@ function updateBoostBar() {
 function updateStatsGrid() {
     if (!statsGridContainer) return;
     statsGridContainer.removeAll(true);
-    const charName = CHARACTERS[currentCharacterIndex].name;
-    const titleText = statsGridContainer.scene.add.text(0, -220, `${charName} Stats`, {
+    const costumeName = COSTUMES[currentCostumeIndex].name;
+    const titleText = statsGridContainer.scene.add.text(0, -220, `${costumeName} Stats`, {
         fontSize: '40px', fontStyle: 'bold', fill: '#aaffdd', stroke: '#000000', strokeThickness: 10
     }).setOrigin(0.5);
     statsGridContainer.add(titleText);
@@ -251,7 +184,6 @@ class Preloader extends Phaser.Scene {
         this.load.image('fb003', 'assets/FB00_nyknck/FB003.png');
         this.load.image('fb004', 'assets/FB00_nyknck/FB004.png');
         this.load.image('fb005', 'assets/FB00_nyknck/FB005.png');
-        this.load.image('monap', 'assets/monap.png');
     }
 
     create() {
@@ -284,18 +216,34 @@ class Castle extends Phaser.Scene {
         playerStats.boost = 0;
         applyBoostBonuses();
 
-        this.add.text(720, 80, 'Castle Defense', { fontSize: '48px', fill: '#ffffff', stroke: '#000000', strokeThickness: 10 }).setOrigin(0.5);
-
-        //topLeftStatsText = this.add.text(20, 20, '', { fontSize: '32px', fill: '#ffffff', stroke: '#000000', strokeThickness: 6, lineSpacing: 4 });
+        this.add.text(720, 80, 'Elementa', { fontSize: '48px', fill: '#ffffff', stroke: '#000000', strokeThickness: 10 }).setOrigin(0.5);
 
         boostLabelText = this.add.text(20, 60, '', { fontSize: '32px', fill: '#ffffff', stroke: '#000000', strokeThickness: 6 });
-
-        //boostLabelText = this.add.text(20, 58, 'Boost:', { fontSize: '32px', fill: '#ffffff', stroke: '#000000', strokeThickness: 6 });
 
         const barX = 130, barY = 85, barWidth = 220, barHeight = 18;
         boostBarBackground = this.add.rectangle(barX, barY, barWidth, barHeight, 0x000000).setStrokeStyle(2, 0xffffff).setOrigin(0.5, -0.5);
         boostBarFill = this.add.rectangle(barX, barY, barWidth, barHeight - 4, 0x00ff88).setOrigin(0.5, -0.5);
         updateBoostBar();
+
+        gold = 0;
+        const goldIconX = 1350;
+        const goldIconY = 45;
+
+        goldIcon = this.add.circle(goldIconX, goldIconY, 22, 0xffd700)
+            .setStrokeStyle(4, 0x000000)
+            .setDepth(20);
+
+        goldText = this.add.text(goldIconX - 20, goldIconY, '0', {
+            fontSize: '38px',
+            fontStyle: 'bold',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 8
+        })
+        .setOrigin(1, 0.5)
+        .setDepth(20);
+
+        this.updateGoldCounter();
 
         enemies = this.physics.add.group();
         fireballs = this.physics.add.group();
@@ -314,13 +262,12 @@ class Castle extends Phaser.Scene {
 
         this.physics.add.overlap(fireballs, enemies, this.hitEnemy, null, this);
 
-        barrierZone = this.add.rectangle(BARRIER_ZONE_X, 360, BARRIER_ZONE_WIDTH, BARRIER_ZONE_HEIGHT, 0x00ff00, 0);
+        barrierZone = this.add.rectangle(BARRIER_ZONE_X, 360, 120, 720, 0x00ff00, 0);
         this.physics.add.existing(barrierZone);
         barrierZone.body.allowGravity = false;
         barrierZone.body.immovable = true;
         barrierZone.body.moves = false;
 
-        // Stats button is created but NEVER shown during gameplay
         statsButton = this.add.text(400, 40, 'Stats', {
             fontSize: '32px',
             fill: '#00ffcc',
@@ -328,14 +275,14 @@ class Castle extends Phaser.Scene {
             padding: { left: 16, right: 16, top: 8, bottom: 8 }
         }).setOrigin(1, 0)
           .setInteractive()
-          .setVisible(false);  // hidden
+          .setVisible(false);
 
         statsOverlay = this.add.container(720, 360).setDepth(15).setVisible(false);
 
-        const overlayBg = this.add.rectangle(0, 0, 760, 520, 0x112233)
+        const overlayBgStats = this.add.rectangle(0, 0, 760, 520, 0x112233)
             .setAlpha(0.88)
             .setStrokeStyle(4, 0x88ccff);
-        statsOverlay.add(overlayBg);
+        statsOverlay.add(overlayBgStats);
 
         statsGridContainer = this.add.container(0, 0);
         statsOverlay.add(statsGridContainer);
@@ -357,129 +304,318 @@ class Castle extends Phaser.Scene {
         this.createSelectionOverlay();
         this.selectionOverlay.setVisible(true);
         this.pauseGameplay();
+
+        LANES.forEach(laneY => {
+            laneLastRightmost[laneY] = BARRIER_ZONE_RIGHT_EDGE;
+        });
     }
 
-    createSelectionOverlay() {
-        const overlayW = 1100;
-        const overlayH = 620;
-        const overlayX = 720;
-        const overlayY = 360;
+createSelectionOverlay() {
+    const overlayW = 1100;
+    const overlayH = 620;
+    const overlayX = 720;
+    const overlayY = 360;
 
-        this.selectionOverlay = this.add.container(overlayX, overlayY).setDepth(10);
+    this.selectionOverlay = this.add.container(overlayX, overlayY).setDepth(10);
 
-        const overlayBg = this.add.rectangle(0, 0, overlayW, overlayH, 0x1e2a44)
-            .setAlpha(0.93)
-            .setStrokeStyle(6, 0x6699ff);
-        this.selectionOverlay.add(overlayBg);
+    const overlayBg = this.add.rectangle(0, 0, overlayW, overlayH, 0x1e2a44)
+        .setAlpha(0.93)
+        .setStrokeStyle(6, 0x6699ff);
+    this.selectionOverlay.add(overlayBg);
 
-        const previewContainer = this.add.container(0, -overlayH/2 + 140);
-        this.selectionOverlay.add(previewContainer);
+    const dividerX = -overlayW * 0.15;
+    this.selectionOverlay.add(
+        this.add.line(dividerX, -overlayH/2 + 80, dividerX, overlayH - 160, 0xffffff, 0.6)
+            .setLineWidth(3)
+    );
 
-        this.bigPreviewSprite = null;
+    // ── LEFT SECTION ────────────────────────────────────────────
+    const leftCenterX = -overlayW * 0.28;
+    const previewContainer = this.add.container(leftCenterX, -overlayH/2 + 240);
+    this.selectionOverlay.add(previewContainer);
 
-        this.previewName = this.add.text(0, 110, CHARACTERS[0].name, {
-            fontSize: '48px',
+    this.bigPreviewSprite = null;
+
+    this.previewName = this.add.text(0, 180, COSTUMES[0].name, {
+        fontSize: '44px',
+        fontStyle: 'bold',
+        fill: '#aaffdd',
+        stroke: '#000000',
+        strokeThickness: 10,
+        align: 'center'
+    }).setOrigin(0.5);
+    previewContainer.add(this.previewName);
+
+    const arrowOffset = 180;
+
+    const leftArrow = this.add.text(-arrowOffset, 180, '←', {
+        fontSize: '80px',
+        fill: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 12
+    }).setOrigin(0.5).setInteractive()
+      .on('pointerdown', () => {
+          currentCostumeIndex = (currentCostumeIndex - 1 + COSTUMES.length) % COSTUMES.length;
+          this.updateCharacterPreview();
+      })
+      .on('pointerover', () => leftArrow.setStyle({ fill: '#ffff88' }))
+      .on('pointerout', () => leftArrow.setStyle({ fill: '#ffffff' }));
+    previewContainer.add(leftArrow);
+
+    const rightArrow = this.add.text(arrowOffset, 180, '→', {
+        fontSize: '80px',
+        fill: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 12
+    }).setOrigin(0.5).setInteractive()
+      .on('pointerdown', () => {
+          currentCostumeIndex = (currentCostumeIndex + 1) % COSTUMES.length;
+          this.updateCharacterPreview();
+      })
+      .on('pointerover', () => rightArrow.setStyle({ fill: '#ffff88' }))
+      .on('pointerout', () => rightArrow.setStyle({ fill: '#ffffff' }));
+    previewContainer.add(rightArrow);
+
+    // ── RIGHT SECTION ───────────────────────────────────────────
+    const rightBaseX = overlayW * 0.10;
+    const gridTopY   = -overlayH/2 + 80;
+
+    const buttonWidth  = 240;
+    const buttonHeight = 60;
+    const colSpacing   = 280;
+    const rowSpacing   = 80;
+
+    this.add.text(rightBaseX + colSpacing / 2, gridTopY - 50, 'CHOOSE TWO ELEMENTS', {
+        fontSize: '38px',
+        fontStyle: 'bold',
+        fill: '#ffdd88',
+        stroke: '#000000',
+        strokeThickness: 8
+    }).setOrigin(0.5);
+
+    // Store all active button containers so we can reset highlights
+    this.activeButtons = [];
+
+    this.selectedElements = [...COSTUMES[currentCostumeIndex].preselected];
+
+    let fireButton = null;
+    let shurikenButton = null;
+
+    const elements = [
+        { name: 'FIRE',      color: 0xff4444, border: 0xff8800, key: 'fire',   active: true  },
+        { name: 'SHURIKEN',  color: 0x6666ff, border: 0x4444ff, key: 'shuriken', active: true  },
+        { name: 'Locked',    color: 0x555555, border: 0x333333, key: null,     active: false },
+        { name: 'Locked',    color: 0x555555, border: 0x333333, key: null,     active: false },
+        { name: 'Locked',    color: 0x555555, border: 0x333333, key: null,     active: false },
+        { name: 'Locked',    color: 0x555555, border: 0x333333, key: null,     active: false },
+        { name: 'Locked',    color: 0x555555, border: 0x333333, key: null,     active: false },
+        { name: 'Locked',    color: 0x555555, border: 0x333333, key: null,     active: false },
+        { name: 'Locked',    color: 0x555555, border: 0x333333, key: null,     active: false },
+        { name: 'Locked',    color: 0x555555, border: 0x333333, key: null,     active: false }
+    ];
+
+    elements.forEach((el, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+
+        const btnX = rightBaseX + col * colSpacing;
+        const btnY = gridTopY + row * rowSpacing;
+
+        const btnContainer = this.add.container(btnX, btnY);
+        this.selectionOverlay.add(btnContainer);
+
+        const bg = this.add.rectangle(0, 0, buttonWidth, buttonHeight, el.color)
+            .setStrokeStyle(6, el.border);
+        btnContainer.add(bg);
+
+        const txt = this.add.text(0, 0, el.name, {
+            fontSize: el.name.length > 6 ? '30px' : '38px',
             fontStyle: 'bold',
-            fill: '#aaffdd',
+            fill: el.active ? '#ffffff' : '#aaaaaa',
             stroke: '#000000',
-            strokeThickness: 12
-        }).setOrigin(0.5, -0.4);
-        previewContainer.add(this.previewName);
+            strokeThickness: el.active ? 8 : 6,
+            align: 'center'
+        }).setOrigin(0.5);
+        btnContainer.add(txt);
 
-        // Left arrow
-        const leftArrow = this.add.text(-300, 0, '←', {
-            fontSize: '80px',
-            fill: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 12
-        }).setOrigin(0.5).setInteractive()
-          .on('pointerdown', () => {
-              currentCharacterIndex = (currentCharacterIndex - 1 + CHARACTERS.length) % CHARACTERS.length;
-              this.updateCharacterPreview();
-          })
-          .on('pointerover', () => leftArrow.setStyle({ fill: '#ffffcc' }))
-          .on('pointerout', () => leftArrow.setStyle({ fill: '#ffffff' }));
-        this.selectionOverlay.add(leftArrow);
+        if (el.active) {
+            btnContainer.setInteractive(
+                new Phaser.Geom.Rectangle(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight),
+                Phaser.Geom.Rectangle.Contains
+            );
 
-        // Right arrow
-        const rightArrow = this.add.text(300, 0, '→', {
-            fontSize: '80px',
-            fill: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 12
-        }).setOrigin(0.5).setInteractive()
-          .on('pointerdown', () => {
-              currentCharacterIndex = (currentCharacterIndex + 1) % CHARACTERS.length;
-              this.updateCharacterPreview();
-          })
-          .on('pointerover', () => rightArrow.setStyle({ fill: '#ffffcc' }))
-          .on('pointerout', () => rightArrow.setStyle({ fill: '#ffffff' }));
-        this.selectionOverlay.add(rightArrow);
+            // Store for later reset
+            this.activeButtons.push({ container: btnContainer, bg: bg, key: el.key, border: el.border });
 
-        // Start button
-        const startBtn = this.add.text(0, overlayH/2 - 70, 'DEFEND THE CASTLE', {
-            fontSize: '42px',
-            fontStyle: 'bold',
-            fill: '#ffffff',
-            backgroundColor: '#006633',
-            padding: { left: 70, right: 70, top: 25, bottom: 25 },
-            stroke: '#000000',
-            strokeThickness: 9
-        })
-        .setOrigin(0.5)
-        .setInteractive()
-        .on('pointerover', () => startBtn.setStyle({ fill: '#ffffcc' }))
-        .on('pointerout', () => startBtn.setStyle({ fill: '#ffffff' }))
-        .on('pointerdown', () => {
+            if (el.name === 'FIRE') fireButton = btnContainer;
+            if (el.name === 'SHURIKEN') shurikenButton = btnContainer;
+
+            btnContainer.on('pointerdown', () => {
+                const elementKey = el.key;
+                if (!elementKey) return;
+
+                const costume = COSTUMES[currentCostumeIndex];
+
+                // Prevent deselecting preselected items
+                if (costume.preselected.includes(elementKey)) {
+                    return;
+                }
+
+                if (this.selectedElements.includes(elementKey)) {
+                    this.selectedElements = this.selectedElements.filter(e => e !== elementKey);
+                    bg.setStrokeStyle(6, el.border);
+                    bg.setScale(1);
+                } else if (this.selectedElements.length < 2) {
+                    this.selectedElements.push(elementKey);
+                    bg.setStrokeStyle(10, 0xffff00);
+                    bg.setScale(1.08);
+                }
+
+                this.updateStartButtonState();
+            })
+            .on('pointerover', () => {
+                if (!this.selectedElements.includes(el.key)) {
+                    bg.setFillStyle(Phaser.Display.Color.IntegerToColor(el.color).lighten(25).color);
+                }
+            })
+            .on('pointerout', () => {
+                if (!this.selectedElements.includes(el.key)) {
+                    bg.setFillStyle(el.color);
+                }
+            });
+        } else {
+            btnContainer.setAlpha(0.55);
+        }
+    });
+
+    this.startButton = this.add.text(0, overlayH/2 - 90, 'SELECT TWO ELEMENTS', {
+        fontSize: '46px',
+        fontStyle: 'bold',
+        fill: '#888888',
+        backgroundColor: '#333333',
+        padding: { left: 80, right: 80, top: 30, bottom: 30 },
+        stroke: '#000000',
+        strokeThickness: 10
+    })
+    .setOrigin(0.5)
+    .setAlpha(0.6)
+    .setInteractive();
+
+    this.startButton.on('pointerdown', () => {
+        if (this.selectedElements.length === 2) {
             this.selectionOverlay.setVisible(false);
             this.resumeGameplay();
+        }
+    });
+
+    this.selectionOverlay.add(this.startButton);
+
+    // ── Helper methods ─────────────────────────────────────────
+
+    this.updateStartButtonState = () => {
+        const preCount = COSTUMES[currentCostumeIndex].preselected.length;
+        const needed = 2 - preCount;
+
+        if (this.selectedElements.length === 2) {
+            this.startButton.setText('DEFEND THE CASTLE');
+            this.startButton.setStyle({
+                fill: '#ffffff',
+                backgroundColor: '#006633'
+            }).setAlpha(1);
+        } else {
+            this.startButton.setText(needed > 0 ? `SELECT ${needed} MORE` : 'SELECT TWO ELEMENTS');
+            this.startButton.setStyle({
+                fill: '#888888',
+                backgroundColor: '#333333'
+            }).setAlpha(0.6);
+        }
+    };
+
+    this.updateCharacterPreview = () => {
+        if (this.bigPreviewSprite) this.bigPreviewSprite.destroy();
+        const costume = COSTUMES[currentCostumeIndex];
+
+        this.bigPreviewSprite = this.add.sprite(0, 60, CHARACTER.spriteKey)
+            .setScale(3.5)
+            .setOrigin(0.5, 0.8)
+            .setFrame(costume.frameOffset)
+            .play('idle_cycle');
+        previewContainer.add(this.bigPreviewSprite);
+
+        this.previewName.setText(costume.name);
+
+        const nameWidth = this.previewName.width;
+        const maxNameWidth = arrowOffset * 2 - 60;
+
+        if (nameWidth > maxNameWidth) {
+            this.previewName.setScale(maxNameWidth / nameWidth);
+        } else {
+            this.previewName.setScale(1);
+        }
+
+        // Reset all button highlights first
+        this.activeButtons.forEach(btn => {
+            if (btn.key) {
+                btn.bg.setStrokeStyle(6, btn.border);
+                btn.bg.setScale(1);
+            }
         });
-        this.selectionOverlay.add(startBtn);
 
-        this.updateCharacterPreview = () => {
-            if (this.bigPreviewSprite) this.bigPreviewSprite.destroy();
-            const char = CHARACTERS[currentCharacterIndex];
-            this.bigPreviewSprite = this.add.sprite(0, 60, char.spriteKey)
-                .setScale(2.8)
-                .setOrigin(0.5, 0.8)
-                .play('idle_cycle');
-            previewContainer.add(this.bigPreviewSprite);
-            this.previewName.setText(char.name);
-        };
+        // Reset selections to this costume's preselected
+        this.selectedElements = [...costume.preselected];
 
-        this.updateCharacterPreview();
-    }
+        // Re-apply highlights ONLY to preselected for this costume
+        this.activeButtons.forEach(btn => {
+            if (costume.preselected.includes(btn.key)) {
+                btn.bg.setStrokeStyle(10, 0xffff00);
+                btn.bg.setScale(1.08);
+            }
+        });
+
+        this.updateStartButtonState();
+    };
+
+    // Initial setup
+    this.updateStartButtonState();
+    this.updateCharacterPreview();
+}
+
+    // ── GAME METHODS ─────────────────────────────────────────────
 
     pauseGameplay() {
         this.physics.pause();
-        if (spawnTimer) spawnTimer.paused = true;
         if (shootTimer) shootTimer.paused = true;
     }
 
     resumeGameplay() {
         if (boostLabelText) {
-        boostLabelText.setText(CHARACTERS[currentCharacterIndex].name + ':');
+            const costumeName = COSTUMES[currentCostumeIndex].name;
+            boostLabelText.setText(`${costumeName}:`);
         }
+
         if (player) player.destroy();
 
-        player = this.physics.add.sprite(280, 520, CHARACTERS[currentCharacterIndex].spriteKey);
-        player.setScale(CHARACTERS[currentCharacterIndex].spriteScale);
+        const costume = COSTUMES[currentCostumeIndex];
+
+        player = this.physics.add.sprite(280, 520, CHARACTER.spriteKey);
+        player.setScale(CHARACTER.spriteScale);
         player.setOrigin(0.5, 1.0);
+        player.setFrame(costume.frameOffset);
         player.body.setSize(32, 64);
         player.body.setOffset(16, 0);
         player.body.immovable = true;
         player.anims.play('idle_cycle');
 
+        this.spawnInitialPackedRows();
+
         this.physics.resume();
 
-        spawnTimer = this.time.addEvent({
-            delay: spawnDelay,
-            callback: this.spawnEnemyCastle,
-            callbackScope: this,
-            loop: true
-        });
-
         applyBoostBonuses();
+
+        gold = 0;
+        this.updateGoldCounter();
+
+        this.useFireNext = true;
 
         shootTimer = this.time.addEvent({
             delay: 1000 / playerStats.fireRate,
@@ -490,13 +626,108 @@ class Castle extends Phaser.Scene {
 
         this.time.addEvent({
             delay: 150,
-            callback: this.manageBarrierCrowd,
+            callback: this.updateLaneMovement,
+            callbackScope: this,
+            loop: true
+        });
+
+        this.time.addEvent({
+            delay: 800,
+            callback: () => {
+                LANES.forEach(lane => this.refillLane(lane));
+            },
             callbackScope: this,
             loop: true
         });
 
         updateTopLeftStats();
-        // No statsButton.setVisible(true) — button is hidden forever
+    }
+
+    spawnEnemyInLane(laneY, atX) {
+        const enemy = enemies.create(atX, laneY, 'slime');
+        enemy.setScale(ENEMY_VISUAL_SCALE);
+        enemy.setTint(ENEMY_BASE.tint);
+        enemy.play('slime_anim');
+
+        enemy.health = ENEMY_BASE.health;
+        enemy.maxHealth = ENEMY_BASE.health;
+
+        const variedSpeed = ENEMY_BASE.speed * Phaser.Math.FloatBetween(0.9, 1.1);
+        enemy.originalSpeed = -variedSpeed;
+
+        enemy.setVelocityX(0);
+        enemy.setVelocityY(0);
+
+        if (enemy.body) {
+            enemy.body.setBounce(0);
+            enemy.body.setSize(enemy.width * 0.5, enemy.height * 0.5);
+            enemy.body.setOffset((enemy.width - enemy.body.width) / 2, (enemy.height - enemy.body.height) / 2);
+        }
+
+        laneLastRightmost[laneY] = Math.max(laneLastRightmost[laneY], atX);
+
+        return enemy;
+    }
+
+    spawnInitialPackedRows() {
+        const gap = ENEMY_SPACING;
+        const startX = BARRIER_ZONE_RIGHT_EDGE;
+
+        LANES.forEach(laneY => {
+            let x = startX;
+            while (x < 1500) {
+                this.spawnEnemyInLane(laneY, x);
+                x += gap;
+            }
+        });
+    }
+
+    getRightmostInLane(laneY) {
+        let rightmost = BARRIER_ZONE_RIGHT_EDGE - ENEMY_SPACING;
+        enemies.children.iterate(e => {
+            if (e.active && Math.abs(e.y - laneY) < 40) {
+                if (e.x > rightmost) rightmost = e.x;
+            }
+        });
+        return rightmost;
+    }
+
+    refillLane(laneY) {
+        const rightmost = this.getRightmostInLane(laneY);
+        const nextX = rightmost + ENEMY_SPACING;
+
+        if (nextX < 1480) {
+            this.spawnEnemyInLane(laneY, nextX);
+        }
+    }
+
+    updateLaneMovement() {
+        LANES.forEach(laneY => {
+            let frontEnemy = null;
+            let minX = Infinity;
+
+            enemies.children.iterate(e => {
+                if (e.active && Math.abs(e.y - laneY) < 40) {
+                    if (e.x < minX) {
+                        minX = e.x;
+                        frontEnemy = e;
+                    }
+                }
+            });
+
+            const shouldMove = minX > BARRIER_ZONE_RIGHT_EDGE + 20;
+
+            enemies.children.iterate(e => {
+                if (e.active && Math.abs(e.y - laneY) < 40) {
+                    if (shouldMove) {
+                        e.setVelocityX(e.originalSpeed);
+                    } else {
+                        e.setVelocityX(0);
+                        e.setVelocityY(0);
+                    }
+                }
+            });
+        });
     }
 
     autoShootAtNearest() {
@@ -511,18 +742,30 @@ class Castle extends Phaser.Scene {
 
         const priority = targets.sort((a, b) => a.x - b.x);
         const count = Math.min(playerStats.projectilesCount, priority.length);
+
         for (let i = 0; i < count; i++) {
-            this.shootAtTarget(priority[i]);
+            const target = priority[i];
+
+            let config;
+            if (this.selectedElements.length === 0) {
+                config = FIRE_CONFIG;
+            } else if (this.selectedElements.length === 1) {
+                config = this.selectedElements[0] === 'fire' ? FIRE_CONFIG : SHURIKEN_CONFIG;
+            } else {
+                config = this.useFireNext ? FIRE_CONFIG : SHURIKEN_CONFIG;
+                this.useFireNext = !this.useFireNext;
+            }
+
+            this.shootAtTarget(target, config);
         }
     }
 
-    shootAtTarget(target) {
+    shootAtTarget(target, config) {
         if (!target || !target.active) return;
 
         const spawnX = player.x;
         const spawnY = player.y - (player.displayHeight / 2);
 
-        const config = CHARACTERS[currentCharacterIndex].projectileConfig;
         const projectile = fireballs.create(spawnX, spawnY, config.key);
         projectile.play(config.animKey);
         projectile.setScale(config.scale);
@@ -545,133 +788,104 @@ class Castle extends Phaser.Scene {
         projectile.rotation = angle;
     }
 
-    showStatsOverlay() {
-        updateStatsGrid();
-        statsOverlay.setVisible(true);
-    }
-
-    spawnEnemyCastle() {
-        let currentEnemyCount = 0;
-        enemies.children.iterate(e => { if (e.active) currentEnemyCount++; });
-        if (currentEnemyCount >= MAX_ENEMIES_ON_SCREEN) return;
-
-        let atBarrierCount = 0;
-        enemies.children.iterate(enemy => {
-            if (enemy.active && this.physics.overlap(enemy, barrierZone)) {
-                atBarrierCount++;
-            }
-        });
-        if (atBarrierCount >= 3) return;
-
-        let availableLanes = LANES.filter((_, idx) => idx !== lastSpawnLaneIndex);
-        if (availableLanes.length === 0) availableLanes = LANES;
-
-        for (let i = 0; i < availableLanes.length; i++) {
-            const candidateY = availableLanes[i];
-
-            let isClear = true;
-            enemies.children.iterate(enemy => {
-                if (!enemy.active) return;
-
-                const dx = 1500 - enemy.x;
-                const dy = candidateY - enemy.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < MIN_ENEMY_SEPARATION) {
-                    isClear = false;
-                    return false;
-                }
-            });
-
-            if (isClear) {
-                const enemy = enemies.create(1500, candidateY, 'slime');
-
-                enemy.setScale(ENEMY_VISUAL_SCALE);
-                enemy.setTint(ENEMY_BASE.tint);
-                enemy.play('slime_anim');
-
-                enemy.health = ENEMY_BASE.health;
-                enemy.maxHealth = ENEMY_BASE.health;
-                enemy.barrierBlocked = false;
-
-                const baseSpeed = ENEMY_BASE.speed;
-                const variedSpeed = baseSpeed * Phaser.Math.FloatBetween(0.85, 1.15);
-                enemy.originalSpeed = -variedSpeed;
-
-                enemy.setVelocityX(enemy.originalSpeed);
-                enemy.setVelocityY(0);
-
-                if (enemy.body) {
-                    enemy.body.setBounce(0);
-                    enemy.body.setSize(enemy.width * 0.5, enemy.height * 0.5);
-                    enemy.body.setOffset((enemy.width - enemy.body.width) / 2, (enemy.height - enemy.body.height) / 2);
-                }
-
-                lastSpawnLaneIndex = LANES.indexOf(candidateY);
-                return;
-            }
-        }
-    }
-
-    manageBarrierCrowd() {
-        enemies.children.iterate(enemy => {
-            if (enemy.active) {
-                if (this.physics.overlap(enemy, barrierZone)) {
-                    enemy.setVelocityX(0);
-                    enemy.setVelocityY(0);
-                    enemy.barrierBlocked = true;
-                } else {
-                    enemy.barrierBlocked = false;
-                }
-            }
-        });
-
-        enemies.children.iterate(enemy => {
-            if (!enemy.active || enemy.barrierBlocked) return;
-
-            let shouldMove = true;
-
-            enemies.children.iterate(other => {
-                if (!other.active || other === enemy) return;
-
-                if (Math.abs(other.y - enemy.y) > LANE_PROXIMITY) return;
-                if (other.x >= enemy.x) return;
-
-                if (other.body.velocity.x === 0 || other.barrierBlocked) {
-                    if (enemy.x - other.x < MIN_ENEMY_SEPARATION + 40) {
-                        shouldMove = false;
-                        return false;
-                    }
-                }
-            });
-
-            if (shouldMove) {
-                if (Math.abs(enemy.body.velocity.x) < 5) {
-                    enemy.setVelocityX(enemy.originalSpeed);
-                }
-            } else {
-                enemy.setVelocityX(0);
-                enemy.setVelocityY(0);
-            }
-        });
-    }
-
     hitEnemy(projectile, enemy) {
         if (projectile.hitEnemies.has(enemy)) return;
         projectile.hitEnemies.add(enemy);
 
-        enemy.health -= playerStats.attack;
-        if (enemy.health < enemy.maxHealth) enemy.setTint(0xffaa00);
+        const damage = playerStats.attack;
+        enemy.health -= damage;
+
+        this.createFloatingDamageText(enemy.x, enemy.y, damage);
+
+        if (enemy.health < enemy.maxHealth) {
+            enemy.setTint(0xffaa00);
+        }
+
         if (enemy.health <= 0) {
+            if (Math.random() < 0.9) {
+                this.createGoldDrop(enemy.x, enemy.y);
+                gold++;
+                this.updateGoldCounter();
+            }
+
+            const laneY = Math.round(enemy.y / 60) * 60;
             enemy.destroy();
+
             playerStats.boost = Math.min(playerStats.boost + BOOST_PER_KILL, MAX_BOOST);
             applyBoostBonuses();
             updateBoostBar();
             if (shootTimer) shootTimer.delay = 1000 / playerStats.fireRate;
+
+            this.refillLane(laneY);
         }
 
         projectile.pierceHits = (projectile.pierceHits || 0) + 1;
-        if (projectile.pierceHits > playerStats.pierce) projectile.destroy();
+        if (projectile.pierceHits > playerStats.pierce) {
+            projectile.destroy();
+        }
+    }
+
+    createFloatingDamageText(x, y, damageAmount) {
+        const text = this.add.text(x, y, `-${damageAmount}`, {
+            fontSize: '28px',
+            fontFamily: 'Arial',
+            color: '#ff4444',
+            stroke: '#000000',
+            strokeThickness: 6,
+            shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 3, fill: true }
+        }).setOrigin(0.5, 1.0);
+
+        text.setPosition(x, y - 30);
+
+        const randomOffset = Phaser.Math.Between(-12, 12);
+        text.x += randomOffset;
+
+        this.tweens.add({
+            targets: text,
+            y: text.y - 80,
+            alpha: 0,
+            scale: 1.4,
+            duration: 900,
+            ease: 'Quad.easeOut',
+            onComplete: () => text.destroy()
+        });
+
+        this.tweens.add({
+            targets: text,
+            scale: 1.0,
+            duration: 400,
+            ease: 'Quad.easeOut',
+            delay: 100
+        });
+    }
+
+    updateGoldCounter() {
+        if (!goldText) return;
+        goldText.setText(`${gold}`);
+        const padding = 15;
+        goldText.x = goldIcon.x - padding - goldText.width;
+    }
+
+    createGoldDrop(fromX, fromY) {
+        const goldDrop = this.add.circle(fromX, fromY - 20, 20, 0xffd700)
+            .setStrokeStyle(3, 0x000000)
+            .setDepth(30)
+            .setAlpha(1);
+
+        const targetX = goldIcon.x;
+        const targetY = goldIcon.y;
+
+        this.tweens.add({
+            targets: goldDrop,
+            x: targetX,
+            y: targetY,
+            scale: 1.3,
+            alpha: 0,
+            rotation: Math.PI * 8,
+            duration: 1500,
+            ease: 'Sine.easeInOut',
+            onComplete: () => goldDrop.destroy()
+        });
     }
 }
 
